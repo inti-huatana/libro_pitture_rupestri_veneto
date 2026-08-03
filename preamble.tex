@@ -1,0 +1,151 @@
+% preamble.tex
+\documentclass[11pt, twoside]{book}
+
+% ------------------------------------------------------------
+% Formato: A5, tascabile
+% ------------------------------------------------------------
+\usepackage{geometry}
+\geometry{
+  paperwidth=148mm,
+  paperheight=210mm,
+  top=16mm,
+  bottom=18mm,
+  inner=16mm,
+  outer=13mm,
+  headheight=14pt,
+  headsep=8mm,
+  footskip=12mm
+}
+
+% ------------------------------------------------------------
+% Font: coppia pensata per la lettura prolungata su formato piccolo.
+% TeX Gyre Pagella (clone della Palatino) come testo: occhio alto,
+% pensato per restare leggibile a corpi piccoli, più caldo della
+% Termes usata nella versione A4. TeX Gyre Heros per i titoli, come
+% contrappunto lineare. Entrambe fanno parte della collezione
+% TeX Gyre, inclusa in qualsiasi installazione TeX Live standard:
+% nessun font da installare a parte.
+% ------------------------------------------------------------
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Pagella}[
+  Numbers = OldStyle,
+  Ligatures = TeX
+]
+\setsansfont{TeX Gyre Heros}
+\setmonofont{TeX Gyre Cursor}[Scale=0.9]
+
+\usepackage{polyglossia}
+\setmainlanguage{italian}
+
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{microtype}
+% Tolleranza più ampia per la giustificazione: utile su una colonna
+% stretta come quella di un formato A5, per assorbire le righe che
+% altrimenti sporgerebbero leggermente oltre il margine.
+\emergencystretch=3em
+\tolerance=1000
+\hbadness=3000
+\usepackage{setspace}
+\onehalfspacing
+
+% Colore discreto per titoli e dettagli grafici (bruno-ocra, richiamo
+% cromatico alla roccia e ai pigmenti citati nel testo, non decorativo)
+\definecolor{ocra}{RGB}{123,62,32}
+
+% ------------------------------------------------------------
+% Intestazioni di pagina: nome parte sulle pagine pari,
+% titolo capitolo sulle pagine dispari, numero di pagina in basso
+% ------------------------------------------------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\color{ocra}\hrule height\headrulewidth width\headwidth}
+\fancyhead[LE]{\small\itshape\leftmark}
+\fancyhead[RO]{\small\itshape\rightmark}
+\fancyfoot[LE,RO]{\small\thepage}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyfoot[LE,RO]{\small\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% Marcatori usati da fancyhdr: nome della parte a sinistra (pagine pari),
+% titolo del capitolo a destra (pagine dispari). La classe book non
+% definisce di suo un comando per marcare le parti nell'intestazione:
+% lo si aggancia qui direttamente al comando \part.
+\let\oldpart\part
+\renewcommand{\part}[1]{\oldpart{#1}\markboth{#1}{}}
+\renewcommand{\chaptermark}[1]{\markright{#1}{}}
+
+% ------------------------------------------------------------
+% Bibliografia
+% ------------------------------------------------------------
+\usepackage[sort&compress]{natbib}
+\bibliographystyle{plainnat}
+% Il testo del libro non contiene citazioni puntuali (\citep, \citet):
+% e' un'opera divulgativa in cui le fonti sono richiamate discorsivamente
+% nel testo, non con rimandi numerici. Percio' bibtex, senza istruzioni
+% aggiuntive, non stamperebbe alcuna voce: nessuna fonte risulterebbe
+% "citata" nel senso tecnico del comando \cite. \nocite{*} forza la
+% stampa dell'intera bibliografia in references.bib, cosi' come una
+% sezione "Fonti" a fine libro elenca tutto il materiale consultato,
+% indipendentemente da singoli richiami puntuali nel testo.
+\usepackage{etoolbox}
+\AtBeginDocument{\nocite{*}}
+
+\usepackage[colorlinks=true,
+            linkcolor=ocra,
+            citecolor=ocra,
+            urlcolor=ocra,
+            filecolor=ocra]{hyperref}
+
+% Glossario semplice: comando per termini tecnici con rimando al glossario finale
+\newcommand{\termine}[1]{\textit{#1}}
+
+% ------------------------------------------------------------
+% Stile dei capitoli e delle parti
+% ------------------------------------------------------------
+\usepackage{titlesec}
+
+\titleformat{\chapter}[display]
+  {\normalfont\sffamily\Large\bfseries\color{ocra}}
+  {\chaptertitlename\ \thechapter}
+  {6pt}
+  {\normalfont\sffamily\LARGE\bfseries\color{black}}
+\titlespacing*{\chapter}{0pt}{10pt}{24pt}
+
+\titleformat{\part}[display]
+  {\normalfont\sffamily\huge\bfseries\color{ocra}\centering}
+  {\partname\ \thepart}
+  {12pt}
+  {\normalfont\sffamily\Huge\bfseries\color{black}\centering}
+
+\titleformat{\section}
+  {\normalfont\sffamily\large\bfseries}
+  {\thesection}{0.8em}{}
+
+\titleformat{\subsection}
+  {\normalfont\sffamily\normalsize\bfseries}
+  {\thesubsection}{0.8em}{}
+
+% ------------------------------------------------------------
+% Capolettera per l'apertura di ogni capitolo (tocco tipografico
+% da libro tascabile curato, non un semplice muro di testo)
+% ------------------------------------------------------------
+\usepackage{tikz}
+\usepackage{lettrine}
+\setcounter{DefaultLines}{3}
+\renewcommand{\DefaultLoversize}{0.1}
+\renewcommand{\DefaultLraise}{0.0}
+\newcommand{\aprecapitolo}[1]{\lettrine[lines=3, findent=2pt, nindent=0pt]{\color{ocra}#1}{}}
+
+% Evita la lettera vietata "—": non caricare pacchetti che la introducano
+% automaticamente (nessuna azione necessaria, promemoria per chi edita
+% il sorgente a mano)

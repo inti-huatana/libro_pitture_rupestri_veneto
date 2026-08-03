@@ -1,0 +1,94 @@
+\input{preamble}
+
+\title{Il silenzio della roccia\\[0.3em]\large Perché le Alpi venete sembrano prive di arte rupestre, e cosa serve per cercarla davvero}
+\author{MB}
+\date{\today}
+
+\begin{document}
+
+\frontmatter
+
+% ------------------------------------------------------------
+% Copertina: disegnata con TikZ, coerente col formato tascabile.
+% Fascia superiore e inferiore color ocra, titolo in maiuscoletto
+% sans, un motivo lineare essenziale a richiamo di un'incisione
+% rupestre stilizzata (nessuna immagine esterna necessaria).
+% (il pacchetto tikz è caricato nel preambolo)
+% ------------------------------------------------------------
+\begin{titlepage}
+  \thispagestyle{empty}
+  \begin{tikzpicture}[remember picture, overlay]
+    % fascia superiore
+    \fill[ocra] (current page.north west) rectangle
+      ([yshift=-45mm]current page.north east);
+    % fascia inferiore
+    \fill[ocra] ([yshift=45mm]current page.south west) rectangle
+      (current page.south east);
+    % motivo lineare essenziale: pochi segni che richiamano
+    % un'incisione rupestre schematica, senza pretese figurative,
+    % centrato nella fascia inferiore
+    \begin{scope}[white, line width=1pt]
+      \draw ([yshift=15mm]current page.south) ++(-8mm,0)
+        -- ++(0,10mm) -- ++(8mm,6mm) -- ++(8mm,-6mm) -- ++(0,-10mm);
+      \draw ([yshift=25mm]current page.south) circle (2.2mm);
+    \end{scope}
+  \end{tikzpicture}
+
+  \begin{center}
+    \vspace*{58mm}
+    {\sffamily\Huge\bfseries\color{ocra} Il silenzio\\[2pt] della roccia\par}
+    \vspace{10mm}
+    {\sffamily\normalsize Perch\'e le Alpi venete sembrano prive\\
+    di arte rupestre, e cosa serve\\per cercarla davvero\par}
+    \vspace{18mm}
+    {\sffamily\large MB\par}
+  \end{center}
+
+  \vfill
+  \begin{center}
+    {\sffamily\small\color{white} mauro.barbieri@pm.me \par}
+  \end{center}
+  \vspace*{8mm}
+\end{titlepage}
+
+\input{chapters/00_prefazione}
+
+\tableofcontents
+
+\mainmatter
+
+% Parte I - La domanda
+\part{La domanda}
+\input{chapters/01_due_paesaggi}
+\input{chapters/02_research_bias}
+\input{chapters/03_cosa_si_conosce_veneto}
+
+% Parte II - Chi cercare
+\part{Chi cercare}
+\input{chapters/04_tempo_ghiacci_clima}
+\input{chapters/05_specie_alpine}
+\input{chapters/06_cosa_cacciavano}
+
+% Parte III - Come si costruisce un'ipotesi di ricerca
+\part{Come si costruisce un'ipotesi di ricerca}
+\input{chapters/07_qhapaq_nan}
+\input{chapters/08_fisica_del_movimento}
+\input{chapters/09_vicolo_cieco_corridoi}
+\input{chapters/10_metodo_kompatscher}
+\input{chapters/11_cosa_resta}
+
+% Parte IV - Ritorno alla domanda
+\part{Ritorno alla domanda}
+\input{chapters/12_dove_guardare}
+\input{chapters/13_conclusioni}
+
+\backmatter
+
+\input{chapters/14_glossario}
+
+\cleardoublepage
+\addcontentsline{toc}{chapter}{Fonti}
+\renewcommand{\bibname}{Fonti}
+\bibliography{references}
+
+\end{document}
