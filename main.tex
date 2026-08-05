@@ -1,7 +1,7 @@
 \input{preamble}
 
 \title{Il silenzio della roccia\\[0.3em]\large Perché le montagne venete sembrano prive di arte rupestre}
-\author{MB}
+\author{Mauro Barbieri}
 \date{\today}
 
 \begin{document}
@@ -24,13 +24,25 @@
     % fascia inferiore
     \fill[ocra] ([yshift=45mm]current page.south west) rectangle
       (current page.south east);
-    % motivo lineare essenziale: pochi segni che richiamano
-    % un'incisione rupestre schematica, senza pretese figurative,
-    % centrato nella fascia inferiore
-    \begin{scope}[white, line width=1pt]
-      \draw ([yshift=15mm]current page.south) ++(-8mm,0)
-        -- ++(0,10mm) -- ++(8mm,6mm) -- ++(8mm,-6mm) -- ++(0,-10mm);
-      \draw ([yshift=25mm]current page.south) circle (2.2mm);
+    % figura antropomorfa stilizzata ispirata all'arte rupestre:
+    % corpo distorto con braccia alzate e gambe divaricate,
+    % centrata nella fascia inferiore ocra
+    \begin{scope}[shift={([yshift=22mm]current page.south)}, white, line width=1.4pt, line cap=round, line join=round]
+      % testa (cerchio leggermente ellittico, inclinato)
+      \draw (0.4mm,28mm) ellipse (4.5mm and 5mm);
+      % corpo (tronco corto, asimmetrico)
+      \draw (0,23mm) -- (1mm,14mm);
+      % braccio sinistro: alzato e piegato, con dita accennate
+      \draw (0,23mm) -- (-9mm,30mm) -- (-12mm,27mm);
+      \draw (-9mm,30mm) -- (-11mm,33mm);
+      \draw (-9mm,30mm) -- (-7mm,33mm);
+      % braccio destro: alzato e leggermente diverso
+      \draw (0,23mm) -- (8mm,29mm) -- (11mm,26mm);
+      \draw (8mm,29mm) -- (10mm,32mm);
+      % gamba sinistra: divaricata, piede a sinistra
+      \draw (1mm,14mm) -- (-6mm,4mm) -- (-9mm,5mm);
+      % gamba destra: divaricata, piede a destra, lunghezza diversa
+      \draw (1mm,14mm) -- (7mm,3mm) -- (11mm,6mm);
     \end{scope}
   \end{tikzpicture}
 
@@ -41,7 +53,7 @@
     {\sffamily\normalsize Perch\'e le montagne venete sembrano prive\\
     di arte rupestre}
     \vspace{18mm}
-    {\sffamily\large MB\par}
+    {\sffamily\large Mauro Barbieri\par}
   \end{center}
 
   \vfill
@@ -62,6 +74,7 @@
 \input{chapters/01_due_paesaggi}
 \input{chapters/02_research_bias}
 \input{chapters/03_cosa_si_conosce_veneto}
+\input{chapters/03b_tafonomia}
 
 % Parte II - Chi cercare
 \part{Chi cercare}
