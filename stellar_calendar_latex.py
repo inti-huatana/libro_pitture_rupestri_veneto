@@ -14,7 +14,7 @@ A separate table lists all discontinuities (appearances/disappearances).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 import numpy as np
@@ -45,7 +45,7 @@ DISC_EVENT_IT = {
 
 
 def log(msg: str) -> None:
-    print(f"[{datetime.utcnow().strftime('%H:%M:%S')}] {msg}")
+    print(f"[{datetime.now(UTC).strftime('%H:%M:%S')}] {msg}")
 
 
 def tex_escape(s: str) -> str:

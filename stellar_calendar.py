@@ -12,7 +12,7 @@ Outputs (in ./output/):
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 import numpy as np
@@ -63,7 +63,7 @@ SHIFT_THRESHOLD_DAYS = 30.0   # flag discontinuity if rising day shifts more tha
 # Utilities
 # ---------------------------------------------------------------------------
 def log(msg: str) -> None:
-    print(f"[{datetime.utcnow().strftime('%H:%M:%S')}] {msg}")
+    print(f"[{datetime.now(UTC).strftime('%H:%M:%S')}] {msg}")
 
 
 def day_to_season(day_series: pd.Series) -> pd.Series:
@@ -74,6 +74,7 @@ def day_to_season(day_series: pd.Series) -> pd.Series:
         bins=_SEASON_BINS,
         labels=_SEASON_LABELS,
         right=False,
+        ordered=False,
     ).astype(str)
 
 
