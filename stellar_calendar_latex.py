@@ -23,16 +23,20 @@ import pandas as pd
 OUTPUT_DIR = Path("output")
 TEX_OUT    = OUTPUT_DIR / "appendix_stellar_calendar.tex"
 
-# Season abbreviations for compact table
+# Season abbreviations for compact table (nomi allineati a stellar_calendar.py:
+# UNIVERSAL_WINDOWS + HG_WINDOWS + FARM_WINDOWS)
 SEASON_ABBR = {
-    "Gelo/Inverno":       "\\textsc{inv}",
-    "Disgelo/Primavera":  "\\textsc{pri}",
-    "Semina/Pascolo":     "\\textsc{sem}",
-    "Calura estiva":      "\\textsc{est}",
-    "Raccolto":           "\\textsc{rac}",
-    "Caccia autunnale":   "\\textsc{aut}",
-    "Freddo/Pre-inverno": "\\textsc{fre}",
-    "nan":                "---",
+    "Equinozio di primavera":              "\\textsc{eq.pri}",
+    "Solstizio d'estate":                  "\\textsc{sol.est}",
+    "Equinozio d'autunno":                 "\\textsc{eq.aut}",
+    "Solstizio d'inverno":                 "\\textsc{sol.inv}",
+    "Bramito del cervo":                   "\\textsc{bramito}",
+    "Amori del camoscio":                  "\\textsc{camoscio}",
+    "Semina primaverile (legumi/miglio)":  "\\textsc{sem.pri}",
+    "Semina autunnale (cereali)":          "\\textsc{sem.aut}",
+    "Mietitura":                           "\\textsc{mietit.}",
+    "":                                    "---",
+    "nan":                                 "---",
 }
 
 DISC_EVENT_IT = {
@@ -71,20 +75,18 @@ def build_heliacal_section(heliacal: pd.DataFrame, epoch_min: float, epoch_max: 
     lines: list[str] = []
     block_label = f"{abs(int(epoch_max))}–{abs(int(epoch_min))} kyr BP" if epoch_min != epoch_max else f"{abs(int(epoch_min))} kyr BP"
 
-    lines.append(f"\n\\subsection*{{Levate eliache {block_label}}}\n")
+    lines.append(f"\n\\subsection*{{Eventi eliaci {block_label}}}\n")
     lines.append("\\begin{small}")
-    lines.append("\\begin{longtable}{rllrrll}")
+    lines.append("\\begin{longtable}{rlllrl}")
     lines.append("\\toprule")
-    lines.append("\\textbf{Epoca} & \\textbf{Stella} & \\textbf{V} & "
-                 "\\textbf{G. levata} & \\textbf{Stagione levata} & "
-                 "\\textbf{G. tramonto} & \\textbf{Stagione tramonto} \\\\")
+    lines.append("\\textbf{Epoca} & \\textbf{Periodo} & \\textbf{Stella} & \\textbf{V} & "
+                 "\\textbf{Evento} & \\textbf{Stagione} \\\\")
     lines.append("\\midrule")
     lines.append("\\endfirsthead")
-    lines.append("\\multicolumn{7}{c}{\\small\\textit{(continua)}} \\\\")
+    lines.append("\\multicolumn{6}{c}{\\small\\textit{(continua)}} \\\\")
     lines.append("\\toprule")
-    lines.append("\\textbf{Epoca} & \\textbf{Stella} & \\textbf{V} & "
-                 "\\textbf{G. levata} & \\textbf{Stagione levata} & "
-                 "\\textbf{G. tramonto} & \\textbf{Stagione tramonto} \\\\")
+    lines.append("\\textbf{Epoca} & \\textbf{Periodo} & \\textbf{Stella} & \\textbf{V} & "
+                 "\\textbf{Evento} & \\textbf{Stagione} \\\\")
     lines.append("\\midrule")
     lines.append("\\endhead")
     lines.append("\\bottomrule")
@@ -92,7 +94,7 @@ def build_heliacal_section(heliacal: pd.DataFrame, epoch_min: float, epoch_max: 
 
     block = heliacal[
         (heliacal["epoch_kyr"] >= epoch_min) & (heliacal["epoch_kyr"] <= epoch_max)
-    ].sort_values(["epoch_kyr", "heliacal_rising_day"], ascending=[False, True])
+    ].sort_values(["epoch_kyr", "giorno_evento"], ascending=[False, True])
 
     prev_epoch = None
     for _, row in block.iterrows():
@@ -105,17 +107,16 @@ def build_heliacal_section(heliacal: pd.DataFrame, epoch_min: float, epoch_max: 
         else:
             epoch_label = ""
 
-        sr = SEASON_ABBR.get(str(row.get("season_rising", "nan")), "---")
-        ss = SEASON_ABBR.get(str(row.get("season_setting", "nan")), "---")
+        evento = "levata" if row.get("tipo_evento") == "levata" else "tramonto"
+        stagione = SEASON_ABBR.get(str(row.get("stagione", "nan")), "---")
 
         lines.append(
             f"{tex_escape(epoch_label)} & "
+            f"{tex_escape(str(row.get('periodo', '')))} & "
             f"{tex_escape(row['star_label'])} & "
             f"{vmag_fmt(row['Vmag'])} & "
-            f"{day_fmt(row['heliacal_rising_day'])} & "
-            f"{sr} & "
-            f"{day_fmt(row['heliacal_setting_day'])} & "
-            f"{ss} \\\\"
+            f"{evento} (g.\\,{day_fmt(row['giorno_evento'])}) & "
+            f"{stagione} \\\\"
         )
 
     lines.append("\\end{longtable}")
@@ -217,14 +218,21 @@ def build_preamble() -> list[str]:
         "Le magnitudini apparenti includono il moto proprio e la velocità radiale di ciascuna stella.",
         "",
         "\\medskip",
-        "\\noindent\\textbf{Abbreviazioni stagionali:}",
-        "\\textsc{inv} Gelo/Inverno (g.~315–45);",
-        "\\textsc{pri} Disgelo/Primavera (g.~45–90);",
-        "\\textsc{sem} Semina/Pascolo (g.~90–135);",
-        "\\textsc{est} Calura estiva (g.~135–180);",
-        "\\textsc{rac} Raccolto (g.~180–225);",
-        "\\textsc{aut} Caccia autunnale (g.~225–270);",
-        "\\textsc{fre} Freddo/Pre-inverno (g.~270–315).",
+        "\\noindent\\textbf{Abbreviazioni stagionali:} finestre di $\\pm$10 giorni attorno al",
+        "giorno indicato (0 = equinozio di primavera). Equinozi e solstizi valgono per",
+        "tutte le epoche; gli eventi legati alla caccia-raccolta (\\textsc{bramito},",
+        "\\textsc{camoscio}) si applicano solo alle epoche di Paleolitico medio/superiore",
+        "e Mesolitico, quelli legati all'agricoltura (\\textsc{sem.pri}, \\textsc{sem.aut},",
+        "\\textsc{mietit.}) solo dal Neolitico all'età del Ferro (vedi colonna Periodo).",
+        "\\textsc{eq.pri} Equinozio di primavera (g.~0);",
+        "\\textsc{sol.est} Solstizio d'estate (g.~93);",
+        "\\textsc{eq.aut} Equinozio d'autunno (g.~186);",
+        "\\textsc{sol.inv} Solstizio d'inverno (g.~276);",
+        "\\textsc{bramito} Bramito del cervo (g.~200);",
+        "\\textsc{camoscio} Amori del camoscio (g.~250);",
+        "\\textsc{sem.pri} Semina primaverile, legumi/miglio (g.~30);",
+        "\\textsc{sem.aut} Semina autunnale, cereali (g.~215);",
+        "\\textsc{mietit.} Mietitura (g.~100).",
         "",
         "\\bigskip",
     ]
