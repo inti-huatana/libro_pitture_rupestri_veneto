@@ -43,7 +43,14 @@ ASTERISM_HIP: dict[int, str] = {
 # per assegnare ogni epoca a un periodo, quindi si usa il centro
 # dell'intervallo, non un valore scelto a caso.
 PERIODS: list[tuple[str, float, float]] = [
-    ("Paleolitico medio",     -100.00,  -43.00),
+    # Il limite inferiore è aperto (-inf), non -100: il Paleolitico medio
+    # (industria musteriana) inizia molto prima di -100 kyr (centinaia di
+    # migliaia di anni, cfr. chapters/01b_storia_territorio.tex sulla
+    # frequentazione di Homo heidelbergensis), il libro non lo data con
+    # precisione per il Veneto. -100 era solo il valore di default di
+    # --Tmin: usarlo come limite reale lasciava "periodo" vuoto per epoche
+    # più antiche, come in chi lancia lo script con --Tmin oltre -100.
+    ("Paleolitico medio",  float("-inf"),  -43.00),
     ("Paleolitico superiore",  -43.00,  -11.70),
     ("Mesolitico",             -11.70,   -7.75),
     ("Neolitico",                -7.75,   -5.25),
@@ -97,7 +104,8 @@ def _period_label(epoch_kyr) -> str:
 # solo nome per periodo, non una sotto-periodizzazione fine come per il
 # Paleolitico, perché il libro non la fornisce con la stessa risoluzione.
 CULTURES: list[tuple[str, float, float]] = [
-    ("Musteriano",                                      -100.00, -40.50),
+    # Limite inferiore aperto (-inf): stesso motivo di PERIODS sopra.
+    ("Musteriano",                               float("-inf"), -40.50),
     ("Aurignaziano",                                      -40.50, -33.00),
     ("Gravettiano",                                       -33.00, -23.00),
     ("Epigravettiano",                                    -23.00, -11.85),
@@ -151,11 +159,14 @@ UNIVERSAL_WINDOWS: list[tuple[str, float, float]] = [
 # nevicate/la discesa; nella tabella lo scarto ha sempre segno positivo e
 # si applica come +scarto al disgelo/salita e -scarto alle nevicate/discesa.
 CLIMATE_PHASES: list[tuple[str, float, float, float]] = [
-    # -100 → -21 kyr: il libro non descrive in dettaglio le oscillazioni
-    # dell'intero Würm pre-UMG (assenza di una curva climatica assoluta per
-    # questo intervallo di quasi 80.000 anni); si usa uno scarto intermedio,
-    # esplicitamente la stima meno risolta di questa tabella.
-    ("Glaciale indifferenziato (Würm, ante-UMG)", -100.00, -21.00, 11.0),
+    # Limite inferiore aperto (-inf), non -100: il libro non descrive in
+    # dettaglio le oscillazioni dell'intero Würm pre-UMG né cosa viene
+    # prima (assenza di una curva climatica assoluta per questo
+    # intervallo); si usa uno scarto intermedio, esplicitamente la stima
+    # meno risolta di questa tabella, esteso a qualunque epoca più antica
+    # di -21 kyr (stesso motivo di PERIODS/CULTURES sopra: -100 era solo
+    # il default di --Tmin, non un confine reale).
+    ("Glaciale indifferenziato (Würm, ante-UMG)", float("-inf"), -21.00, 11.0),
     # Ultimo Massimo Glaciale: -8/-10°C rispetto a oggi (chapters/14_glossario.tex,
     # voce "Ultimo Massimo Glaciale"; chapters/04, Ravazzi et al. 2007).
     # 9°C × 2,5 gg/°C ≈ 23 giorni.
@@ -402,8 +413,11 @@ def _pick_event(row) -> tuple[float, str, str]:
 
 
 def build_heliacal_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Per epoch: top-2 brightest visible + 1 per asterismo (solo se il suo
-    evento cade in una finestra stagionale attiva)."""
+    """Per epoca: top-2 stelle più brillanti + 1 per asterismo, ma solo fra
+    le stelle il cui evento (levata o tramonto, mai entrambi, v. _pick_event)
+    cade in una finestra stagionale attiva. Una stella la cui levata e il cui
+    tramonto cadono entrambi fuori da ogni finestra non compare: non
+    avrebbe nessun legame stagionale da mostrare."""
     vis = df[
         (df["visibility"] == "VISIBILE") &
         df["heliacal_rising_day"].notna()
@@ -412,34 +426,41 @@ def build_heliacal_table(df: pd.DataFrame) -> pd.DataFrame:
 
     records: list[dict] = []
     for epoch, grp in vis.groupby("epoch_kyr", sort=True):
-        grp_s = grp.sort_values("Vmag")
-        top2 = grp_s.head(2)
+        events = {}  # HIP -> (day, tipo, season)
+        for _, row in grp.iterrows():
+            day, tipo, season = _pick_event(row)
+            if season:
+                events[row["HIP"]] = (day, tipo, season)
+        if not events:
+            continue
+
+        seasonal = grp[grp["HIP"].isin(events)].sort_values("Vmag")
+        top2 = seasonal.head(2)
         selected = set(top2["HIP"].tolist())
 
         extra: list[pd.Series] = []
         for hip in ASTERISM_HIP:
             if hip not in selected:
-                rows = grp_s[grp_s["HIP"] == hip]
+                rows = seasonal[seasonal["HIP"] == hip]
                 if not rows.empty:
-                    cand = rows.iloc[0]
-                    _, _, season = _pick_event(cand)
-                    if season:
-                        extra.append(cand)
-                        selected.add(hip)
+                    extra.append(rows.iloc[0])
+                    selected.add(hip)
 
         chosen = pd.concat([top2] + ([pd.DataFrame(extra)] if extra else []))
         for _, row in chosen.iterrows():
-            day, tipo, season = _pick_event(row)
+            day, tipo, season = events[row["HIP"]]
             records.append({
-                "epoch_kyr":   row["epoch_kyr"],
-                "periodo":     row["periodo"],
-                "HIP":         int(row["HIP"]),
-                "star_label":  row["star_label"],
-                "asterism":    row["asterism"],
-                "Vmag":        row["Vmag"],
-                "giorno_evento": day,
-                "tipo_evento":   tipo,
-                "stagione":      season,
+                "epoch_kyr":      row["epoch_kyr"],
+                "periodo":        row["periodo"],
+                "fase_climatica": _climate_phase_label(row["epoch_kyr"]),
+                "cultura":        _culture_label(row["epoch_kyr"]),
+                "HIP":            int(row["HIP"]),
+                "star_label":     row["star_label"],
+                "asterism":       row["asterism"],
+                "Vmag":           row["Vmag"],
+                "giorno_evento":  day,
+                "tipo_evento":    tipo,
+                "stagione":       season,
             })
 
     out = pd.DataFrame(records)
@@ -474,7 +495,12 @@ def build_seasonal_calendar(df: pd.DataFrame) -> pd.DataFrame:
 
     rows: list[dict] = []
     for epoch, grp in vis.groupby("epoch_kyr", sort=True):
-        row = {"epoch_kyr": epoch, "periodo": _period_label(epoch)}
+        row = {
+            "epoch_kyr":      epoch,
+            "periodo":        _period_label(epoch),
+            "fase_climatica": _climate_phase_label(epoch),
+            "cultura":        _culture_label(epoch),
+        }
         active_names = {w[0] for w in _active_windows(epoch)}
         best: dict[str, tuple[float, str]] = {}  # event_name -> (Vmag, cell text)
 
@@ -541,7 +567,10 @@ def build_discontinuities(df: pd.DataFrame) -> pd.DataFrame:
             )
         else:
             sub["dettaglio"] = ""
-        parts.append(sub[["epoch_a_kyr", "periodo", "HIP", "star_label", "Vmag", "evento", "dettaglio"]])
+        sub["fase_climatica"] = sub["epoch_a_kyr"].apply(_climate_phase_label)
+        sub["cultura"]        = sub["epoch_a_kyr"].apply(_culture_label)
+        parts.append(sub[["epoch_a_kyr", "periodo", "fase_climatica", "cultura",
+                           "HIP", "star_label", "Vmag", "evento", "dettaglio"]])
 
     if not parts:
         return pd.DataFrame()
@@ -553,31 +582,32 @@ def build_discontinuities(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_pole_star_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Per ogni epoca: le 3 stelle circumpolari più vicine al polo (per
-    distanza angolare), elencate dalla più brillante alla meno brillante
-    (ordine per Vmag crescente). Nessun punteggio combinato."""
+    """Una riga per epoca: le 3 stelle circumpolari più vicine al polo (per
+    distanza angolare) come 3 gruppi di colonne (stella_1/mag_1/dist_1,
+    stella_2/..., stella_3/...), elencate dalla più brillante alla meno
+    brillante (ordine per Vmag crescente). Nessun punteggio combinato."""
     circ = df[df["visibility"] == "CIRCUMPOLARE"].dropna(subset=["dec_deg", "Vmag"]).copy()
     circ["pole_dist_deg"] = 90.0 - circ["dec_deg"]
     circ = circ[circ["pole_dist_deg"] >= 0]
 
-    records: list[dict] = []
+    rows: list[dict] = []
     for epoch, grp in circ.groupby("epoch_kyr", sort=True):
         nearest3 = grp.sort_values("pole_dist_deg").head(3)
         nearest3 = nearest3.sort_values("Vmag")
+        row = {
+            "epoch_kyr":      epoch,
+            "periodo":        _period_label(epoch),
+            "fase_climatica": _climate_phase_label(epoch),
+            "cultura":        _culture_label(epoch),
+        }
         for rank, (_, star) in enumerate(nearest3.iterrows(), start=1):
-            records.append({
-                "epoch_kyr":     epoch,
-                "periodo":       star["periodo"],
-                "rank":          rank,
-                "HIP":           int(star["HIP"]),
-                "star_label":    star["star_label"],
-                "Vmag":          star["Vmag"],
-                "dec_deg":       star["dec_deg"],
-                "pole_dist_deg": star["pole_dist_deg"],
-            })
+            row[f"stella_{rank}"]    = star["star_label"]
+            row[f"mag_{rank}"]       = star["Vmag"]
+            row[f"dist_polo_{rank}_deg"] = star["pole_dist_deg"]
+        rows.append(row)
 
-    out = pd.DataFrame(records)
-    log(f"  Pole star table: {out['epoch_kyr'].nunique() if not out.empty else 0} epochs, {len(out):,} rows")
+    out = pd.DataFrame(rows)
+    log(f"  Pole star table: {len(out):,} epochs")
     return out
 
 
