@@ -189,6 +189,8 @@ def build_discontinuities(df: pd.DataFrame) -> pd.DataFrame:
     records = []
 
     for hip, star_df in df.groupby("HIP"):
+        # Keep one row per epoch (float rounding can produce duplicates)
+        star_df = star_df.drop_duplicates(subset="epoch_kyr", keep="first")
         star_df = star_df.set_index("epoch_kyr").reindex(epochs)
         vis  = star_df["visibility"].fillna("ASSENTE")
         rise = star_df["heliacal_rising_day"]
