@@ -88,56 +88,99 @@ UNIVERSAL_WINDOWS: list[tuple[str, float, float]] = [
     ("Solstizio d'inverno",   276.0, 10.0),
 ]
 
-# Paleolitico (medio e superiore): nessuna semina/raccolta. Marcatori legati
-# al clima glaciale/tardoglaciale e alla biologia della megafauna cacciata.
-# Giorno 25 ≈ 14 aprile, giorno 85 ≈ 13 giugno, giorno 225 ≈ 31 ottobre.
-# Cautela esplicita (nello stile del capitolo 4 del libro): il Paleolitico
-# copre oscillazioni climatiche enormi — dal massimo glaciale (Ravazzi et
-# al. 2007: estati più fredde di 8-10°C, linea delle nevi ~1.000-1.200 m
-# più bassa) agli interstadi caldi (Bølling-Allerød) — quindi un singolo
-# giorno fisso per "disgelo" e "prime nevicate" è un'approssimazione di
-# primo ordine, non una data puntuale valida per l'intero periodo.
-PALEO_WINDOWS: list[tuple[str, float, float]] = [
-    # Disgelo dei fiumi: il disgelo primaverile è guidato soprattutto
-    # dall'aumento dell'insolazione/fotoperiodo più che dalla temperatura
-    # assoluta, quindi resta ancorato a ridosso dell'equinozio anche in
-    # climi più freddi dell'attuale (v. cautela sopra).
-    ("Disgelo dei fiumi",                      25.0, 10.0),
-    # Prime nevicate in pianura/collina: in un clima mediamente più freddo
-    # dell'attuale (Ravazzi et al. 2007), l'arrivo della neve a quote basse
-    # è anticipato rispetto a oggi; qui si stima fine ottobre-inizio
-    # novembre invece di novembre-dicembre.
-    ("Prime nevicate in pianura/collina",     225.0, 10.0),
-    # Nascita dei piccoli (stambecco, camoscio, cervo): stambecco
-    # giugno-luglio, Gran Paradiso — Grignolio, Rossi, Bertolotto, Bassano &
-    # Apollonio (2007), J. Wildlife Management 71(3) [Apollonio già in
-    # bibliografia del libro per luccarini2006]; camoscio, tarda
-    # primavera-inizio estate — Kourkgy et al. (2016), J. Animal Ecology;
-    # cervo, giugno — dato coerente con georgii1981 (già in bibliografia)
-    # sul periodo riproduttivo. Il capitolo 6 del libro descrive già la
-    # caccia estiva ai "branchi di femmine con i loro piccoli" a Riparo
-    # Soman (deangelis2021) — questa finestra formalizza in giorni quello
-    # stesso fenomeno.
-    ("Nascita dei piccoli (stambecco, camoscio, cervo)", 85.0, 10.0),
+# ── Fasi climatiche del Paleolitico/Mesolitico (Tardoglaciale + Olocene
+# antico da chapters/04_tempo_ghiacci_clima.tex, Ravazzi et al. 2007,
+# Ravazzi et al. 2005; Würm pre-Tardoglaciale non dettagliato nel libro) ────
+# (etichetta, inizio_kyr, fine_kyr, scarto_giorni)
+# scarto_giorni = spostamento, in giorni, di disgelo/prime-nevicate (o
+# salita/discesa in quota nel Mesolitico) rispetto a un analogo moderno,
+# stimato da un'anomalia termica × una sensibilità fenologica di ~2,5
+# giorni/°C (Menzel et al. 2006, "European phenological response to climate
+# change matches the warming pattern", Global Change Biology 12), applicata
+# all'anomalia di temperatura estiva riportata nel libro. Un clima più
+# freddo ritarda il disgelo/la salita in quota e anticipa le prime
+# nevicate/la discesa; nella tabella lo scarto ha sempre segno positivo e
+# si applica come +scarto al disgelo/salita e -scarto alle nevicate/discesa.
+CLIMATE_PHASES: list[tuple[str, float, float, float]] = [
+    # -100 → -21 kyr: il libro non descrive in dettaglio le oscillazioni
+    # dell'intero Würm pre-UMG (assenza di una curva climatica assoluta per
+    # questo intervallo di quasi 80.000 anni); si usa uno scarto intermedio,
+    # esplicitamente la stima meno risolta di questa tabella.
+    ("Glaciale indifferenziato (Würm, ante-UMG)", -100.00, -21.00, 11.0),
+    # Ultimo Massimo Glaciale: -8/-10°C rispetto a oggi (chapters/14_glossario.tex,
+    # voce "Ultimo Massimo Glaciale"; chapters/04, Ravazzi et al. 2007).
+    # 9°C × 2,5 gg/°C ≈ 23 giorni.
+    ("Ultimo Massimo Glaciale",                    -21.00, -17.00, 23.0),
+    # Tardoglaciale, fase fredda iniziale (oscillazione di Ragogna/Gschnitz,
+    # Ravazzi 2005): "battuta d'arresto della foresta, nuova avanzata
+    # glaciale", non quantificata in gradi nel libro; stima intermedia.
+    ("Tardoglaciale, fase fredda (Ragogna/Gschnitz)", -17.00, -12.70, 12.0),
+    # Bølling-Allerød: miglioramento sensibile, foreste fino a 1.700-1.800 m
+    # (chapters/04); trattato come quasi analogo moderno.
+    ("Bølling-Allerød",                            -12.70, -11.00,  4.0),
+    # Dryas Recente: clima secco continentale, forte contrasto stagionale,
+    # nuova avanzata glaciale (stadi di Egesen/Kartell/Kromer, chapters/04).
+    ("Dryas Recente",                              -11.00,  -9.70, 14.0),
+    # Olocene: clima stabile, analogo moderno (chapters/04).
+    ("Olocene",                                     -9.70,   0.00,  0.0),
 ]
 
-# Mesolitico: economia di caccia-raccolta come il Paleolitico, ma con un
-# pattern insediativo diverso e meglio documentato — risalita stagionale
-# verso siti d'alta quota. Fonte diretta per l'area di studio: Cima Dodici,
-# Prealpi vicentine/Altopiano di Asiago, 2.000-2.100 m, frequentazione
-# mesolitica antica stagionale (Peresani, Visentin et al. 2025, Quaternary
-# International, "Highland settling in the Early Mesolithic. Insight from
-# the record of Cima Dodici open-air sites, Venetian pre-Alps"). Bramito e
-# amori sono ripresi dal Paleolitico: sono eventi fotoperiodici, quindi
-# validi anche per il Mesolitico, e coerenti con la continuità della caccia
-# a stambecco/camoscio nel Sauveterriano/Castelnoviano documentata nella
-# stessa fonte.
-MESO_WINDOWS: list[tuple[str, float, float]] = [
-    ("Salita stagionale in quota",                   65.0, 10.0),
-    ("Discesa a valle (fine stagione d'alta quota)", 225.0, 10.0),
-    ("Bramito del cervo",                            200.0, 10.0),
-    ("Amori del camoscio",                           250.0, 10.0),
-]
+
+def _climate_offset(epoch_kyr) -> float:
+    try:
+        e = float(epoch_kyr)
+    except (TypeError, ValueError):
+        return 0.0
+    for _, start, end, offset in CLIMATE_PHASES:
+        if start <= e <= end:
+            return offset
+    return 0.0
+
+
+# Paleolitico (medio e superiore): nessuna semina/raccolta. "Disgelo" e
+# "prime nevicate" sono guidati dalla temperatura e si spostano fase per
+# fase secondo CLIMATE_PHASES (v. sopra), non un unico valore medio.
+# "Nascita dei piccoli" resta invece fissa: la stagione degli amori che la
+# determina è innescata dal fotoperiodo (non dalla temperatura) e la durata
+# della gestazione è biologicamente fissa, quindi la data di nascita è
+# stabile su scala di millenni quanto bramito/amori (v. MESO_WINDOWS).
+def _paleo_windows(epoch_kyr) -> list[tuple[str, float, float]]:
+    off = _climate_offset(epoch_kyr)
+    return [
+        ("Disgelo dei fiumi",                  30.0 + off, 10.0),
+        ("Prime nevicate in pianura/collina", 250.0 - off, 10.0),
+        # Nascita dei piccoli (stambecco, camoscio, cervo): stambecco
+        # giugno-luglio, Gran Paradiso — Grignolio, Rossi, Bertolotto, Bassano
+        # & Apollonio (2007), J. Wildlife Management 71(3) [Apollonio già in
+        # bibliografia del libro per luccarini2006]; camoscio, tarda
+        # primavera-inizio estate — Kourkgy et al. (2016), J. Animal Ecology;
+        # cervo, giugno — coerente con georgii1981 (già in bibliografia) sul
+        # periodo riproduttivo. Il capitolo 6 descrive già la caccia estiva
+        # ai "branchi di femmine con i loro piccoli" a Riparo Soman
+        # (deangelis2021) — questa finestra formalizza in giorni lo stesso
+        # fenomeno.
+        ("Nascita dei piccoli (stambecco, camoscio, cervo)", 85.0, 10.0),
+    ]
+
+
+# Mesolitico: stesso principio — "salita"/"discesa" in quota seguono
+# CLIMATE_PHASES (in un clima più freddo la neve in quota si scioglie più
+# tardi e torna prima), mentre bramito/amori restano fissi (fotoperiodici).
+# Fonte diretta per l'area di studio: Cima Dodici, Prealpi vicentine/
+# Altopiano di Asiago, 2.000-2.100 m, frequentazione mesolitica antica
+# stagionale (Peresani, Visentin et al. 2025, Quaternary International,
+# "Highland settling in the Early Mesolithic. Insight from the record of
+# Cima Dodici open-air sites, Venetian pre-Alps"). Bramito/amori: continuità
+# della caccia a stambecco/camoscio nel Sauveterriano/Castelnoviano,
+# documentata nella stessa fonte.
+def _meso_windows(epoch_kyr) -> list[tuple[str, float, float]]:
+    off = _climate_offset(epoch_kyr)
+    return [
+        ("Salita stagionale in quota",                    65.0 + off, 10.0),
+        ("Discesa a valle (fine stagione d'alta quota)", 225.0 - off, 10.0),
+        ("Bramito del cervo",                            200.0, 10.0),
+        ("Amori del camoscio",                           250.0, 10.0),
+    ]
 
 # Comunità agro-pastorali (Neolitico → età del Ferro): calendario cerealicolo
 # mediterraneo ad aridocoltura (semina autunnale prevalente, integrata da
@@ -164,9 +207,9 @@ def _active_windows(epoch_kyr) -> list[tuple[str, float, float]]:
     di un equinozio/solstizio, vince l'evento più specifico."""
     period = _period_label(epoch_kyr)
     if period in PALEO_PERIODS:
-        extra = PALEO_WINDOWS
+        extra = _paleo_windows(epoch_kyr)
     elif period in MESO_PERIODS:
-        extra = MESO_WINDOWS
+        extra = _meso_windows(epoch_kyr)
     elif period in FARMING_PERIODS:
         extra = FARM_WINDOWS
     else:
@@ -336,9 +379,12 @@ def build_seasonal_calendar(df: pd.DataFrame) -> pd.DataFrame:
         df["heliacal_rising_day"].notna()
     ].copy()
 
+    # I nomi degli eventi non dipendono dall'epoca (solo il giorno centrale
+    # si sposta con CLIMATE_PHASES), quindi si possono leggere da un'epoca
+    # qualsiasi solo per ricavare le colonne della tabella.
     all_event_names = [w[0] for w in UNIVERSAL_WINDOWS] + \
-                       [w[0] for w in PALEO_WINDOWS] + \
-                       [w[0] for w in MESO_WINDOWS] + \
+                       [w[0] for w in _paleo_windows(0.0)] + \
+                       [w[0] for w in _meso_windows(0.0)] + \
                        [w[0] for w in FARM_WINDOWS]
     # Deduplica preservando l'ordine di prima comparsa, nel caso in cui una
     # revisione futura riusi lo stesso nome di evento in più liste (oggi non
