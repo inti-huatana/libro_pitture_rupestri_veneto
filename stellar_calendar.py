@@ -149,30 +149,52 @@ def _paleo_windows(epoch_kyr) -> list[tuple[str, float, float]]:
     return [
         ("Disgelo dei fiumi",                  30.0 + off, 10.0),
         ("Prime nevicate in pianura/collina", 250.0 - off, 10.0),
-        # Nascita dei piccoli (stambecco, camoscio, cervo): stambecco
+        # Nascita dei piccoli, ungulati di taglia media e grande: stambecco
         # giugno-luglio, Gran Paradiso — Grignolio, Rossi, Bertolotto, Bassano
         # & Apollonio (2007), J. Wildlife Management 71(3) [Apollonio già in
         # bibliografia del libro per luccarini2006]; camoscio, tarda
         # primavera-inizio estate — Kourkgy et al. (2016), J. Animal Ecology;
-        # cervo, giugno — coerente con georgii1981 (già in bibliografia) sul
-        # periodo riproduttivo. Il capitolo 6 descrive già la caccia estiva
-        # ai "branchi di femmine con i loro piccoli" a Riparo Soman
+        # cervo, giugno — coerente con georgii1981 (già in bibliografia);
+        # bisonte europeo, maggio-luglio, e alce, metà maggio-inizio giugno —
+        # dati moderni su specie affini/analoghe al bisonte delle steppe
+        # (Bison priscus) e all'alce del Paleolitico medio-superiore
+        # documentati a Riparo Tagliente (capuzzisala1980, peresani2017ghiacciaia).
+        # Il cervo gigante estinto (Megaloceros giganteus, v. voce di glossario)
+        # non ha dati diretti: per analogia filogenetica con i cervidi
+        # affini si presume una stagionalità riproduttiva simile, non
+        # verificabile. Il capitolo 6 descrive già la caccia estiva ai
+        # "branchi di femmine con i loro piccoli" a Riparo Soman
         # (deangelis2021) — questa finestra formalizza in giorni lo stesso
         # fenomeno.
-        ("Nascita dei piccoli (stambecco, camoscio, cervo)", 85.0, 10.0),
+        ("Nascita dei piccoli (stambecco, camoscio, cervo, bisonte, alce)", 85.0, 10.0),
+        # Svernamento e parto dell'orso: a differenza degli ungulati, i
+        # cuccioli d'orso nascono in pieno inverno, durante il letargo
+        # (gennaio-febbraio), senza legame con l'insolazione primaverile —
+        # un marcatore stagionale radicalmente diverso da tutti gli altri.
+        # Dato biologico su orso bruno moderno (denning/parturition
+        # invernale ben documentati), applicato per analogia diretta
+        # all'orso delle caverne (Ursus spelaeus), la cui biologia
+        # riproduttiva era verosimilmente la stessa. Il capitolo 6 del
+        # libro documenta l'orso come carnivoro più rappresentato a Riparo
+        # Dalmeri, "anche da resti di individui giovanili" — coerente con
+        # l'uso del riparo come tana.
+        ("Svernamento e parto dell'orso (letargo)", 305.0, 10.0),
     ]
 
 
 # Mesolitico: stesso principio — "salita"/"discesa" in quota seguono
 # CLIMATE_PHASES (in un clima più freddo la neve in quota si scioglie più
-# tardi e torna prima), mentre bramito/amori restano fissi (fotoperiodici).
+# tardi e torna prima), mentre bramito/amori/parto dell'orso restano fissi
+# (fotoperiodici o legati al ciclo del letargo, non alla temperatura).
 # Fonte diretta per l'area di studio: Cima Dodici, Prealpi vicentine/
 # Altopiano di Asiago, 2.000-2.100 m, frequentazione mesolitica antica
 # stagionale (Peresani, Visentin et al. 2025, Quaternary International,
 # "Highland settling in the Early Mesolithic. Insight from the record of
 # Cima Dodici open-air sites, Venetian pre-Alps"). Bramito/amori: continuità
 # della caccia a stambecco/camoscio nel Sauveterriano/Castelnoviano,
-# documentata nella stessa fonte.
+# documentata nella stessa fonte. L'orso bruno (che nel Mesolitico
+# sostituisce l'estinto orso delle caverne) mantiene lo stesso ciclo di
+# letargo invernale.
 def _meso_windows(epoch_kyr) -> list[tuple[str, float, float]]:
     off = _climate_offset(epoch_kyr)
     return [
@@ -180,6 +202,7 @@ def _meso_windows(epoch_kyr) -> list[tuple[str, float, float]]:
         ("Discesa a valle (fine stagione d'alta quota)", 225.0 - off, 10.0),
         ("Bramito del cervo",                            200.0, 10.0),
         ("Amori del camoscio",                           250.0, 10.0),
+        ("Svernamento e parto dell'orso (letargo)",       305.0, 10.0),
     ]
 
 # Comunità agro-pastorali (Neolitico → età del Ferro): calendario cerealicolo
