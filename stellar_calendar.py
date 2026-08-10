@@ -21,7 +21,7 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-INPUT_CSV = Path("fullcat.csv")
+INPUT_CSV = Path("fullcat.csv.gz") if Path("fullcat.csv.gz").exists() else Path("fullcat.csv")
 OUTPUT_DIR = Path("output")
 
 # Epochs to analyse: 0 to -100 kyr in 1-kyr steps
@@ -93,16 +93,26 @@ def star_label(row: pd.Series) -> str:
 def load_data(path: Path) -> pd.DataFrame:
     log(f"Reading {path} ...")
     df = pd.read_csv(path, dtype={"HIP": "Int64", "HD": "float64"})
-    log(f"  {len(df):,} rows, {df['HIP'].nunique()} stars, "
+    log(f"  {len(df):,} rows raw, {df['HIP'].nunique()} stars, "
         f"{df['epoch_kyr_from_year0'].nunique()} epochs")
 
     # Filter to target epoch range
     mask = (df["epoch_kyr_from_year0"] >= EPOCH_MIN) & (df["epoch_kyr_from_year0"] <= EPOCH_MAX)
     df = df[mask].copy()
-    log(f"  After epoch filter (0 to {int(abs(EPOCH_MIN))} kyr BP): {len(df):,} rows")
 
     # Round epoch to avoid float noise
     df["epoch_kyr"] = df["epoch_kyr_from_year0"].round(3)
+
+    # Deduplicate at source: one row per (HIP, epoch_kyr)
+    n_before = len(df)
+    df = df.sort_values("epoch_kyr_from_year0", ascending=False)  # consistent tie-break
+    df = df.drop_duplicates(subset=["HIP", "epoch_kyr"], keep="first").copy()
+    n_after = len(df)
+    if n_before != n_after:
+        log(f"  Removed {n_before - n_after:,} duplicate (HIP, epoch) rows")
+
+    log(f"  After filter+dedup: {n_after:,} rows "
+        f"({df['HIP'].nunique()} stars × {df['epoch_kyr'].nunique()} epochs)")
 
     # Star label (best available name)
     df["star_label"] = df.apply(star_label, axis=1)
