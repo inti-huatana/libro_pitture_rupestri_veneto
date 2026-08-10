@@ -184,71 +184,73 @@ def build_discontinuities(df: pd.DataFrame) -> pd.DataFrame:
       DIVENTA_CIRCUMP  — was visible (had heliacal rising), now circumpolar
       CESSA_CIRCUMP    — was circumpolar, now has heliacal rising again
       SALTO_STAGIONALE — heliacal rising shifts >SHIFT_THRESHOLD_DAYS days
+
+    Uses groupby+shift (fully vectorised) to avoid set_index/reindex fragility.
     """
-    epochs = sorted(df["epoch_kyr"].unique(), reverse=True)  # 0 → -100
-    records = []
+    # Deduplicate: one row per (HIP, epoch_kyr), keep first
+    d = (df.groupby(["HIP", "epoch_kyr"], sort=False)
+           .first()
+           .reset_index()
+           .sort_values(["HIP", "epoch_kyr"], ascending=[True, False])  # newest first within HIP
+           .copy())
 
-    for hip, star_df in df.groupby("HIP"):
-        # Keep one row per epoch (float rounding can produce duplicates)
-        star_df = star_df.drop_duplicates(subset="epoch_kyr", keep="first")
-        star_df = star_df.set_index("epoch_kyr").reindex(epochs)
-        vis  = star_df["visibility"].fillna("ASSENTE")
-        rise = star_df["heliacal_rising_day"]
-        vmag = star_df["Vmag"].ffill()
-        label = star_df["star_label"].ffill()
+    d["visibility"] = d["visibility"].fillna("ASSENTE")
 
-        for i in range(len(epochs) - 1):
-            e_now  = epochs[i]
-            e_prev = epochs[i + 1]
-            v_now  = vis.iloc[i]
-            v_prev = vis.iloc[i + 1]
-            r_now  = rise.iloc[i]
-            r_prev = rise.iloc[i + 1]
-            lbl    = label.iloc[i] if pd.notna(label.iloc[i]) else f"HIP {hip}"
-            mag    = float(vmag.iloc[i]) if pd.notna(vmag.iloc[i]) else np.nan
+    grp = d.groupby("HIP", sort=False)
 
-            base = {
-                "epoch_da_kyr": e_prev,
-                "epoch_a_kyr":  e_now,
-                "HIP":          int(hip),
-                "star_label":   lbl,
-                "Vmag":         round(mag, 2) if not np.isnan(mag) else None,
-            }
+    # "prev" = one millennium older (shift -1 because sorted newest→oldest)
+    d["vis_prev"]    = grp["visibility"].shift(-1).fillna("ASSENTE")
+    d["rise_prev"]   = grp["heliacal_rising_day"].shift(-1)
+    d["epoch_prev"]  = grp["epoch_kyr"].shift(-1)
 
-            if v_prev in ("INVISIBILE", "ASSENTE") and v_now == "VISIBILE":
-                records.append({**base, "evento": "APPARE",
-                                 "dettaglio": f"giorno levata: {r_now:.1f}"})
+    # Drop rows with no previous epoch (last row per HIP)
+    d = d.dropna(subset=["epoch_prev"]).copy()
 
-            elif v_prev == "VISIBILE" and v_now in ("INVISIBILE", "ASSENTE"):
-                records.append({**base, "evento": "SCOMPARE",
-                                 "dettaglio": f"ultimo giorno levata: {r_prev:.1f}"})
+    v_now  = d["visibility"]
+    v_prev = d["vis_prev"]
+    r_now  = d["heliacal_rising_day"]
+    r_prev = d["rise_prev"]
 
-            elif v_prev == "VISIBILE" and v_now == "CIRCUMPOLARE":
-                records.append({**base, "evento": "DIVENTA_CIRCUMPOLARE",
-                                 "dettaglio": ""})
+    # Circular day-shift (wrap at 365)
+    raw_delta = r_now - r_prev
+    delta = np.where(raw_delta >  182.5, raw_delta - 365.0, raw_delta)
+    delta = np.where(delta      < -182.5, delta    + 365.0, delta)
+    d["_delta"] = delta
 
-            elif v_prev == "CIRCUMPOLARE" and v_now == "VISIBILE":
-                records.append({**base, "evento": "CESSA_CIRCUMPOLARE",
-                                 "dettaglio": f"nuovo giorno levata: {r_now:.1f}"})
+    masks = {
+        "APPARE":               v_prev.isin(["INVISIBILE", "ASSENTE"]) & (v_now == "VISIBILE"),
+        "SCOMPARE":             (v_prev == "VISIBILE") & v_now.isin(["INVISIBILE", "ASSENTE"]),
+        "DIVENTA_CIRCUMPOLARE": (v_prev == "VISIBILE") & (v_now == "CIRCUMPOLARE"),
+        "CESSA_CIRCUMPOLARE":   (v_prev == "CIRCUMPOLARE") & (v_now == "VISIBILE"),
+        "SALTO_STAGIONALE":     (v_now == "VISIBILE") & (v_prev == "VISIBILE")
+                                & r_now.notna() & r_prev.notna()
+                                & (d["_delta"].abs() >= SHIFT_THRESHOLD_DAYS),
+    }
 
-            elif v_now == "VISIBILE" and v_prev == "VISIBILE":
-                if pd.notna(r_now) and pd.notna(r_prev):
-                    # Circular difference (days wrap at 365)
-                    delta = r_now - r_prev
-                    if delta > 182.5:
-                        delta -= 365.0
-                    elif delta < -182.5:
-                        delta += 365.0
-                    if abs(delta) >= SHIFT_THRESHOLD_DAYS:
-                        records.append({**base, "evento": "SALTO_STAGIONALE",
-                                         "dettaglio": f"Δ={delta:+.1f}d  "
-                                                      f"({r_prev:.1f}→{r_now:.1f})"})
+    def det(row: pd.Series, evento: str) -> str:
+        if evento == "APPARE":
+            return f"giorno levata: {row['heliacal_rising_day']:.1f}" if pd.notna(row["heliacal_rising_day"]) else ""
+        if evento == "SCOMPARE":
+            return f"ultimo giorno levata: {row['rise_prev']:.1f}" if pd.notna(row["rise_prev"]) else ""
+        if evento == "SALTO_STAGIONALE":
+            return f"Δ={row['_delta']:+.1f}d ({row['rise_prev']:.1f}→{row['heliacal_rising_day']:.1f})"
+        return ""
 
-    out = pd.DataFrame(records).sort_values(
-        ["epoch_a_kyr", "Vmag", "star_label"], ascending=[False, True, True]
-    )
+    parts: list[pd.DataFrame] = []
+    for evento, mask in masks.items():
+        sub = d[mask].copy()
+        sub["evento"]     = evento
+        sub["dettaglio"]  = sub.apply(det, axis=1, evento=evento)
+        sub["epoch_da_kyr"] = sub["epoch_prev"]
+        sub["epoch_a_kyr"]  = sub["epoch_kyr"]
+        parts.append(sub[["epoch_da_kyr", "epoch_a_kyr", "HIP", "star_label", "Vmag",
+                           "evento", "dettaglio"]])
+
+    out = (pd.concat(parts, ignore_index=True)
+             .sort_values(["epoch_a_kyr", "Vmag", "star_label"], ascending=[False, True, True])
+             .reset_index(drop=True))
     log(f"Discontinuities: {len(out):,} events")
-    return out.reset_index(drop=True)
+    return out
 
 
 # ---------------------------------------------------------------------------
