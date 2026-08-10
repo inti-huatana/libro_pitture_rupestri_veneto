@@ -1,415 +1,322 @@
 #!/usr/bin/env python3
 """
 stellar_calendar.py
-Build a prehistoric stellar calendar from precomputed heliacal data (fullcat.csv).
+Process fullcat.csv.gz into prehistoric stellar calendar tables.
 
-Outputs (in ./output/):
-  heliacal_events.csv      — all visible stars per epoch, sorted by rising day
-  discontinuities.csv      — stars that appear/disappear or shift >30 d between millennia
-  seasonal_calendar.csv    — which stars announced each seasonal window in each millennium
-  epoch_summary.csv        — one-line digest per epoch
+Usage:
+    python3 stellar_calendar.py [options]
+
+Options:
+    --input     Path to fullcat.csv or fullcat.csv.gz  [default: auto-detect]
+    --outdir    Output directory                        [default: output]
+    --lat       Observer latitude in degrees            [default: 45.0]
+    --Tmin      Minimum epoch in kyr (negative = past)  [default: -100.0]
+    --Tmax      Maximum epoch in kyr                    [default: 0.0]
+    --dt        Timestep in kyr                         [default: 1.0]
 """
 
 from __future__ import annotations
 
+import argparse
 from datetime import datetime, UTC
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-INPUT_CSV = Path("fullcat.csv.gz") if Path("fullcat.csv.gz").exists() else Path("fullcat.csv")
-OUTPUT_DIR = Path("output")
+# ── Asterism representatives (4 stars only) ─────────────────────────────────
+ASTERISM_HIP: dict[int, str] = {
+    17702: "Pleiadi",
+    26727: "Cin.Orione",
+    60718: "Cr.Sud",
+    20894: "Iadi",
+}
 
-# Epochs to analyse: 0 to -100 kyr in 1-kyr steps
-EPOCH_MIN = -100.0
-EPOCH_MAX = 0.0
-
-# Seasonal windows (days from spring equinox, 0–365).
-# Overlapping by design — a star can announce multiple activities.
-# Each tuple: (label_short, label_it, day_start, day_end)
-SEASONS = [
-    ("GELO",     "Gelo / nascite animali",          315, 365),
-    ("GELO",     "Gelo / nascite animali",            0,  45),  # wraps through 0
-    ("DISGELO",  "Disgelo / alluvioni alpine",        30,  75),
-    ("SEMINA",   "Semina",                            60, 105),
-    ("PASCOLO",  "Pascolo alpino / migrazioni su",    90, 150),
-    ("CALURA",   "Calura estiva / raccolta erbe",    135, 195),
-    ("RACCOLTO", "Raccolto / preparazione inverno",  180, 225),
-    ("CACCIA_A", "Caccia autunnale / migrazioni giù",210, 270),
-    ("FREDDO",   "Freddo / caccia invernale",        270, 315),
+# ── Narrow seasonal windows: (name, center_day, half_width) ─────────────────
+# center_day = days from vernal equinox (day 0). Window = [center-hw, center+hw].
+SEASONAL_WINDOWS: list[tuple[str, float, float]] = [
+    ("Equinozio primavera",   0.0,   5.0),
+    ("Inizio semina",        46.0,   5.0),
+    ("Solstizio estivo",     92.0,   5.0),
+    ("Inizio raccolta",     137.0,   5.0),
+    ("Equinozio autunno",   183.0,   5.0),
+    ("Fine raccolta",       228.0,   5.0),
+    ("Solstizio invernale", 274.0,   5.0),
+    ("Inizio freddo",       319.0,   5.0),
 ]
 
-# Primary (non-overlapping) seasonal label per day — used for the main table
-_SEASON_BINS = [0, 45, 90, 135, 180, 225, 270, 315, 365]
-_SEASON_LABELS = [
-    "Gelo/Inverno",        # 0–45
-    "Disgelo/Primavera",   # 45–90
-    "Semina/Pascolo",      # 90–135
-    "Calura estiva",       # 135–180
-    "Raccolto",            # 180–225
-    "Caccia autunnale",    # 225–270
-    "Freddo/Pre-inverno",  # 270–315
-    "Gelo/Inverno",        # 315–365
-]
 
-SHIFT_THRESHOLD_DAYS = 30.0   # flag discontinuity if rising day shifts more than this
-
-# --- Filter for heliacal_events and seasonal_calendar ---
-# Keep stars with Vmag <= this threshold, PLUS all stars in SPECIAL_HIP regardless of magnitude.
-VMAG_THRESHOLD = 2.0
-
-# Asterisms to always include: Pleiades, Orion Belt, Southern Cross
-SPECIAL_HIP: frozenset[int] = frozenset({
-    # Pleiadi (members in Hp<4 catalog)
-    17702,  # Alcyone   V=2.87
-    17499,  # Electra   V=3.70
-    17847,  # Atlas     V=3.62
-    17573,  # Maia      V=3.88
-    # Cintura di Orione
-    25930,  # Mintaka   V=2.25
-    26311,  # Alnilam   V=1.69  (also V<=2.0, listed for clarity)
-    26727,  # Alnitak   V=1.77  (idem)
-    # Croce del Sud
-    60718,  # Acrux     V=0.78  (idem)
-    62434,  # Mimosa    V=1.25  (idem)
-    61084,  # Gacrux    V=1.62  (idem)
-    59747,  # Imai      V=2.79
-    60260,  # Ginan     V=3.59
-})
-
-
-# ---------------------------------------------------------------------------
-# Utilities
-# ---------------------------------------------------------------------------
 def log(msg: str) -> None:
     print(f"[{datetime.now(UTC).strftime('%H:%M:%S')}] {msg}")
 
 
-def day_to_season(day_series: pd.Series) -> pd.Series:
-    """Map a Series of days-from-equinox (0–365) to primary seasonal label."""
-    day_mod = day_series.mod(365.0)
-    return pd.cut(
-        day_mod,
-        bins=_SEASON_BINS,
-        labels=_SEASON_LABELS,
-        right=False,
-        ordered=False,
-    ).astype(str)
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Prehistoric stellar calendar from fullcat.csv.gz")
+    p.add_argument("--input",  default=None,     help="Input CSV path")
+    p.add_argument("--outdir", default="output",  help="Output directory")
+    p.add_argument("--lat",    type=float, default=45.0,   help="Observer latitude in degrees")
+    p.add_argument("--Tmin",   type=float, default=-100.0, help="Min epoch in kyr")
+    p.add_argument("--Tmax",   type=float, default=0.0,    help="Max epoch in kyr")
+    p.add_argument("--dt",     type=float, default=1.0,    help="Timestep in kyr")
+    return p.parse_args()
 
 
-def star_label(row: pd.Series) -> str:
-    """Return best available human-readable identifier for a star row."""
-    if pd.notna(row.get("NAME")) and str(row["NAME"]).strip():
-        return str(row["NAME"]).strip()
-    if pd.notna(row.get("Bayer")) and str(row["Bayer"]).strip():
-        return str(row["Bayer"]).strip()
-    return f"HIP {int(row['HIP'])}"
+def _star_label(row) -> str:
+    name  = str(row.get("NAME",  "")).strip()
+    bayer = str(row.get("Bayer", "")).strip()
+    if name and name != "nan":
+        label = name
+    elif bayer and bayer != "nan":
+        label = bayer
+    else:
+        label = f"HIP {int(row['HIP'])}"
+    hip = int(row["HIP"])
+    if hip in ASTERISM_HIP:
+        label += f" ({ASTERISM_HIP[hip]})"
+    return label
 
 
-def asterism_label(hip: int) -> str:
-    """Return asterism tag for special HIPs, empty string otherwise."""
-    pleiadi = {17702, 17499, 17847, 17573}
-    orione  = {25930, 26311, 26727}
-    crux    = {60718, 62434, 61084, 59747, 60260}
-    if hip in pleiadi: return "Pleiadi"
-    if hip in orione:  return "Cintura Orione"
-    if hip in crux:    return "Croce del Sud"
+def _season_label(day) -> str:
+    try:
+        d = float(day) % 365.2422
+    except (TypeError, ValueError):
+        return ""
+    for name, center, hw in SEASONAL_WINDOWS:
+        lo = (center - hw) % 365.2422
+        hi = (center + hw) % 365.2422
+        if lo <= hi:
+            if lo <= d <= hi:
+                return name
+        else:
+            if d >= lo or d <= hi:
+                return name
     return ""
 
 
-def filter_bright(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep only V<=VMAG_THRESHOLD stars plus special asterism members."""
-    mask = (df["Vmag"] <= VMAG_THRESHOLD) | df["HIP"].isin(SPECIAL_HIP)
-    return df[mask].copy()
+def load_data(input_path: Path, lat_deg: float,
+              tmin: float, tmax: float, dt: float) -> pd.DataFrame:
+    log(f"Loading {input_path} ...")
+    df = pd.read_csv(input_path, low_memory=False)
+    log(f"  Raw rows: {len(df):,}")
+
+    if "epoch_kyr_from_year0" in df.columns and "epoch_kyr" not in df.columns:
+        df = df.rename(columns={"epoch_kyr_from_year0": "epoch_kyr"})
+
+    df = df.drop_duplicates(subset=["HIP", "epoch_kyr"], keep="first")
+    log(f"  After dedup: {len(df):,}")
+
+    # Select epochs matching tmin..tmax at step dt
+    n_steps = round((tmax - tmin) / dt)
+    target_epochs = {round(tmin + i * dt, 6) for i in range(n_steps + 1)}
+    df["_er"] = df["epoch_kyr"].round(6)
+    df = df[df["_er"].isin(target_epochs)].drop(columns=["_er"])
+    log(f"  After epoch filter [{tmin}, {tmax}] step {dt}: "
+        f"{len(df):,} rows, {df['epoch_kyr'].nunique()} epochs")
+
+    # Meridian altitude filter: 90 - |lat - dec| >= 2
+    df = df.dropna(subset=["dec_deg"])
+    alt = 90.0 - (lat_deg - df["dec_deg"]).abs()
+    df = df[alt >= 2.0].copy()
+    log(f"  After meridian alt >=2° filter: {len(df):,} rows")
+
+    df["star_label"] = df.apply(_star_label, axis=1)
+    return df.reset_index(drop=True)
 
 
-# ---------------------------------------------------------------------------
-# Loading
-# ---------------------------------------------------------------------------
-def load_data(path: Path) -> pd.DataFrame:
-    log(f"Reading {path} ...")
-    df = pd.read_csv(path, dtype={"HIP": "Int64", "HD": "float64"})
-    log(f"  {len(df):,} rows raw, {df['HIP'].nunique()} stars, "
-        f"{df['epoch_kyr_from_year0'].nunique()} epochs")
-
-    # Filter to target epoch range
-    mask = (df["epoch_kyr_from_year0"] >= EPOCH_MIN) & (df["epoch_kyr_from_year0"] <= EPOCH_MAX)
-    df = df[mask].copy()
-
-    # Round epoch to avoid float noise
-    df["epoch_kyr"] = df["epoch_kyr_from_year0"].round(3)
-
-    # Deduplicate at source: one row per (HIP, epoch_kyr)
-    n_before = len(df)
-    df = df.sort_values("epoch_kyr_from_year0", ascending=False)  # consistent tie-break
-    df = df.drop_duplicates(subset=["HIP", "epoch_kyr"], keep="first").copy()
-    n_after = len(df)
-    if n_before != n_after:
-        log(f"  Removed {n_before - n_after:,} duplicate (HIP, epoch) rows")
-
-    log(f"  After filter+dedup: {n_after:,} rows "
-        f"({df['HIP'].nunique()} stars × {df['epoch_kyr'].nunique()} epochs)")
-
-    # Star label (best available name)
-    df["star_label"] = df.apply(star_label, axis=1)
-
-    return df
-
-
-# ---------------------------------------------------------------------------
-# Heliacal events table
-# ---------------------------------------------------------------------------
 def build_heliacal_table(df: pd.DataFrame) -> pd.DataFrame:
-    """One row per (epoch, star) where star is VISIBILE, filtered to bright+special.
-    Sorted by epoch then rising day."""
-    vis = df[df["visibility"] == "VISIBILE"].copy()
-    vis = filter_bright(vis)
+    """Per epoch: top-2 brightest visible + 1 per asterism (if visible)."""
+    vis = df[
+        (df["visibility"] == "VISIBILE") &
+        df["heliacal_rising_day"].notna()
+    ].copy()
+    vis["asterism"] = vis["HIP"].map(ASTERISM_HIP).fillna("")
 
-    vis["season_rising"]  = day_to_season(vis["heliacal_rising_day"])
-    vis["season_setting"] = day_to_season(vis["heliacal_setting_day"])
-    vis["asterismo"] = vis["HIP"].apply(lambda h: asterism_label(int(h)))
+    records: list[dict] = []
+    for epoch, grp in vis.groupby("epoch_kyr", sort=True):
+        grp_s = grp.sort_values("Vmag")
+        top2 = grp_s.head(2)
+        selected = set(top2["HIP"].tolist())
 
-    cols = [
-        "epoch_kyr", "HIP", "star_label", "asterismo", "Vmag",
-        "heliacal_rising_day", "season_rising",
-        "heliacal_setting_day", "season_setting",
-        "acronychal_rising_day", "acronychal_setting_day",
-        "dec_deg", "arcus_visionis_deg",
-    ]
-    out = vis[cols].sort_values(["epoch_kyr", "heliacal_rising_day"], ascending=[False, True])
-    log(f"Heliacal table: {len(out):,} rows "
-        f"(V<={VMAG_THRESHOLD} + {len(SPECIAL_HIP)} stelle speciali)")
-    return out.reset_index(drop=True)
+        extra: list[pd.Series] = []
+        for hip in ASTERISM_HIP:
+            if hip not in selected:
+                rows = grp_s[grp_s["HIP"] == hip]
+                if not rows.empty:
+                    extra.append(rows.iloc[0])
+                    selected.add(hip)
 
-
-# ---------------------------------------------------------------------------
-# Seasonal calendar pivot
-# ---------------------------------------------------------------------------
-def build_seasonal_calendar(heliacal: pd.DataFrame) -> pd.DataFrame:
-    """
-    For each epoch and each seasonal window, list stars (already filtered to
-    bright+special) whose heliacal rising falls inside that window.
-    Output: one row per (epoch, season_window, star), brightest first.
-    """
-    records = []
-    for _, group in heliacal.groupby("epoch_kyr", sort=False):
-        epoch  = group["epoch_kyr"].iloc[0]
-        rising = group["heliacal_rising_day"].values
-        labels = group["star_label"].values
-        vmags  = group["Vmag"].values
-        hips   = group["HIP"].values
-        aster  = group["asterismo"].values
-
-        for short, label_it, d_start, d_end in SEASONS:
-            if d_start >= d_end:
-                continue
-            in_window = (rising >= d_start) & (rising < d_end)
-            stars_in = [(hips[i], labels[i], vmags[i], rising[i], aster[i])
-                        for i in np.where(in_window)[0]]
-            stars_in.sort(key=lambda x: x[2])  # brightest first
-            for hip, lbl, vmag, day, ast in stars_in:
-                records.append({
-                    "epoch_kyr":         epoch,
-                    "window_short":      short,
-                    "window_label":      label_it,
-                    "day_start":         d_start,
-                    "day_end":           d_end,
-                    "HIP":               hip,
-                    "star_label":        lbl,
-                    "asterismo":         ast,
-                    "Vmag":              round(vmag, 2),
-                    "heliacal_rising_day": round(day, 1),
-                })
+        chosen = pd.concat([top2] + ([pd.DataFrame(extra)] if extra else []))
+        for _, row in chosen.iterrows():
+            records.append({
+                "epoch_kyr":            row["epoch_kyr"],
+                "HIP":                  int(row["HIP"]),
+                "star_label":           row["star_label"],
+                "asterism":             row["asterism"],
+                "Vmag":                 row["Vmag"],
+                "heliacal_rising_day":  row["heliacal_rising_day"],
+                "heliacal_setting_day": row.get("heliacal_setting_day", float("nan")),
+                "season_rising":        _season_label(row["heliacal_rising_day"]),
+                "season_setting":       _season_label(row.get("heliacal_setting_day", float("nan"))),
+            })
 
     out = pd.DataFrame(records)
-    log(f"Seasonal calendar: {len(out):,} rows")
+    if not out.empty:
+        out = out.sort_values(["epoch_kyr", "Vmag"])
+    log(f"  Heliacal events: {len(out):,} rows")
     return out
 
 
-# ---------------------------------------------------------------------------
-# Discontinuity detection
-# ---------------------------------------------------------------------------
+def build_seasonal_calendar(heliacal: pd.DataFrame) -> pd.DataFrame:
+    """Stars whose heliacal rising falls within a narrow seasonal window."""
+    if heliacal.empty:
+        return pd.DataFrame()
+    sub = heliacal[heliacal["season_rising"] != ""].copy()
+    out = sub[["epoch_kyr", "season_rising", "star_label", "asterism",
+               "Vmag", "heliacal_rising_day"]].rename(
+        columns={"season_rising": "season", "heliacal_rising_day": "rising_day"})
+    out = out.sort_values(["epoch_kyr", "season", "Vmag"])
+    log(f"  Seasonal calendar: {len(out):,} rows")
+    return out
+
+
 def build_discontinuities(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Detect, for each star, transitions between consecutive millennia:
-      APPARE           — was invisible/absent, now visible
-      SCOMPARE         — was visible, now invisible/absent
-      DIVENTA_CIRCUMP  — was visible (had heliacal rising), now circumpolar
-      CESSA_CIRCUMP    — was circumpolar, now has heliacal rising again
-      SALTO_STAGIONALE — heliacal rising shifts >SHIFT_THRESHOLD_DAYS days
-
-    Uses groupby+shift (fully vectorised) to avoid set_index/reindex fragility.
-    """
-    # Deduplicate: one row per (HIP, epoch_kyr), keep first
+    """Detect appearances, disappearances, circumpolar transitions."""
     d = (df.groupby(["HIP", "epoch_kyr"], sort=False)
-           .first()
-           .reset_index()
-           .sort_values(["HIP", "epoch_kyr"], ascending=[True, False])  # newest first within HIP
+           .first().reset_index()
+           .sort_values(["HIP", "epoch_kyr"], ascending=[True, False])
            .copy())
-
     d["visibility"] = d["visibility"].fillna("ASSENTE")
 
     grp = d.groupby("HIP", sort=False)
-
-    # "prev" = one millennium older (shift -1 because sorted newest→oldest)
-    d["vis_prev"]    = grp["visibility"].shift(-1).fillna("ASSENTE")
-    d["rise_prev"]   = grp["heliacal_rising_day"].shift(-1)
-    d["epoch_prev"]  = grp["epoch_kyr"].shift(-1)
-
-    # Drop rows with no previous epoch (last row per HIP)
+    d["vis_prev"]   = grp["visibility"].shift(-1).fillna("ASSENTE")
+    d["rise_prev"]  = grp["heliacal_rising_day"].shift(-1)
+    d["epoch_prev"] = grp["epoch_kyr"].shift(-1)
     d = d.dropna(subset=["epoch_prev"]).copy()
 
-    v_now  = d["visibility"]
-    v_prev = d["vis_prev"]
-    r_now  = d["heliacal_rising_day"]
-    r_prev = d["rise_prev"]
+    vis  = d["visibility"]
+    visp = d["vis_prev"]
 
-    # Circular day-shift (wrap at 365)
-    raw_delta = r_now - r_prev
-    delta = np.where(raw_delta >  182.5, raw_delta - 365.0, raw_delta)
-    delta = np.where(delta      < -182.5, delta    + 365.0, delta)
-    d["_delta"] = delta
-
-    masks = {
-        "APPARE":               v_prev.isin(["INVISIBILE", "ASSENTE"]) & (v_now == "VISIBILE"),
-        "SCOMPARE":             (v_prev == "VISIBILE") & v_now.isin(["INVISIBILE", "ASSENTE"]),
-        "DIVENTA_CIRCUMPOLARE": (v_prev == "VISIBILE") & (v_now == "CIRCUMPOLARE"),
-        "CESSA_CIRCUMPOLARE":   (v_prev == "CIRCUMPOLARE") & (v_now == "VISIBILE"),
-        "SALTO_STAGIONALE":     (v_now == "VISIBILE") & (v_prev == "VISIBILE")
-                                & r_now.notna() & r_prev.notna()
-                                & (d["_delta"].abs() >= SHIFT_THRESHOLD_DAYS),
+    event_masks: dict[str, pd.Series] = {
+        "APPARE":               (visp == "ASSENTE") & (vis == "VISIBILE"),
+        "SCOMPARE":             (visp == "VISIBILE") & (vis == "ASSENTE"),
+        "DIVENTA_CIRCUMPOLARE": (visp != "CIRCUMPOLARE") & (vis == "CIRCUMPOLARE"),
+        "CESSA_CIRCUMPOLARE":   (visp == "CIRCUMPOLARE") & (vis != "CIRCUMPOLARE"),
+        "SALTO_STAGIONALE": (
+            (vis == "VISIBILE") & (visp == "VISIBILE") &
+            d["heliacal_rising_day"].notna() & d["rise_prev"].notna() &
+            ((d["heliacal_rising_day"] - d["rise_prev"]).abs() > 30)
+        ),
     }
 
-    def det(row: pd.Series, evento: str) -> str:
-        if evento == "APPARE":
-            return f"giorno levata: {row['heliacal_rising_day']:.1f}" if pd.notna(row["heliacal_rising_day"]) else ""
-        if evento == "SCOMPARE":
-            return f"ultimo giorno levata: {row['rise_prev']:.1f}" if pd.notna(row["rise_prev"]) else ""
-        if evento == "SALTO_STAGIONALE":
-            return f"Δ={row['_delta']:+.1f}d ({row['rise_prev']:.1f}→{row['heliacal_rising_day']:.1f})"
-        return ""
-
     parts: list[pd.DataFrame] = []
-    for evento, mask in masks.items():
+    for evento, mask in event_masks.items():
         sub = d[mask].copy()
-        sub["evento"]     = evento
-        sub["dettaglio"]  = sub.apply(det, axis=1, evento=evento)
-        sub["epoch_da_kyr"] = sub["epoch_prev"]
-        sub["epoch_a_kyr"]  = sub["epoch_kyr"]
-        parts.append(sub[["epoch_da_kyr", "epoch_a_kyr", "HIP", "star_label", "Vmag",
-                           "evento", "dettaglio"]])
+        sub["evento"]      = evento
+        sub["epoch_a_kyr"] = sub["epoch_kyr"]
+        if evento == "SALTO_STAGIONALE":
+            sub["dettaglio"] = (
+                "g." + sub["heliacal_rising_day"].round(0).astype(int).astype(str) +
+                " <- g." + sub["rise_prev"].round(0).astype(int).astype(str)
+            )
+        else:
+            sub["dettaglio"] = ""
+        parts.append(sub[["epoch_a_kyr", "HIP", "star_label", "Vmag", "evento", "dettaglio"]])
 
-    out = (pd.concat(parts, ignore_index=True)
-             .sort_values(["epoch_a_kyr", "Vmag", "star_label"], ascending=[False, True, True])
-             .reset_index(drop=True))
-    log(f"Discontinuities: {len(out):,} events")
+    if not parts:
+        return pd.DataFrame()
+
+    out = pd.concat(parts, ignore_index=True)
+    out = out.sort_values(["epoch_a_kyr", "Vmag"], ascending=[False, True])
+    log(f"  Discontinuities: {len(out):,} rows")
     return out
 
 
-# ---------------------------------------------------------------------------
-# Epoch summary
-# ---------------------------------------------------------------------------
-def build_epoch_summary(df: pd.DataFrame, heliacal: pd.DataFrame) -> pd.DataFrame:
-    records = []
-    epochs = sorted(df["epoch_kyr"].unique(), reverse=True)
+def build_pole_star_table(df: pd.DataFrame) -> pd.DataFrame:
+    """Best pole star per epoch: score = pole_distance_deg + 3.0 * Vmag."""
+    circ = df[df["visibility"] == "CIRCUMPOLARE"].dropna(subset=["dec_deg", "Vmag"]).copy()
+    circ["pole_dist"] = 90.0 - circ["dec_deg"]
+    circ = circ[circ["pole_dist"] >= 0]
+    circ["score"] = circ["pole_dist"] + 3.0 * circ["Vmag"]
 
-    for epoch in epochs:
-        all_epoch = df[df["epoch_kyr"] == epoch]
-        vis_epoch = heliacal[heliacal["epoch_kyr"] == epoch]
-
-        n_vis   = len(vis_epoch)
-        n_invis = (all_epoch["visibility"] == "INVISIBILE").sum()
-        n_circ  = (all_epoch["visibility"] == "CIRCUMPOLARE").sum() if "CIRCUMPOLARE" in all_epoch["visibility"].values else 0
-
-        if n_vis > 0:
-            earliest = vis_epoch.loc[vis_epoch["heliacal_rising_day"].idxmin()]
-            latest   = vis_epoch.loc[vis_epoch["heliacal_rising_day"].idxmax()]
-
-            # Longest gap between consecutive rising days (sorted)
-            sorted_days = np.sort(vis_epoch["heliacal_rising_day"].dropna().values)
-            if len(sorted_days) > 1:
-                gaps = np.diff(sorted_days)
-                wrap_gap = 365.0 - sorted_days[-1] + sorted_days[0]
-                all_gaps = np.append(gaps, wrap_gap)
-                max_gap_idx = np.argmax(all_gaps)
-                if max_gap_idx < len(gaps):
-                    gap_start = sorted_days[max_gap_idx]
-                    gap_end   = sorted_days[max_gap_idx + 1]
-                else:
-                    gap_start = sorted_days[-1]
-                    gap_end   = sorted_days[0] + 365.0
-                max_gap = float(all_gaps[max_gap_idx])
-            else:
-                gap_start = gap_end = max_gap = np.nan
-
-            records.append({
-                "epoch_kyr":           epoch,
-                "n_visibili":          n_vis,
-                "n_invisibili":        n_invis,
-                "n_circumpolari":      n_circ,
-                "levata_piu_precoce":  f"{earliest['star_label']} g.{earliest['heliacal_rising_day']:.0f}",
-                "levata_piu_tardiva":  f"{latest['star_label']} g.{latest['heliacal_rising_day']:.0f}",
-                "vuoto_max_giorni":    round(max_gap, 1) if not np.isnan(max_gap) else None,
-                "vuoto_da_giorno":     round(gap_start, 1) if not np.isnan(gap_start) else None,
-                "vuoto_a_giorno":      round(gap_end % 365.0, 1) if not np.isnan(gap_end) else None,
-            })
-        else:
-            records.append({
-                "epoch_kyr": epoch, "n_visibili": 0,
-                "n_invisibili": n_invis, "n_circumpolari": n_circ,
-                "levata_piu_precoce": "", "levata_piu_tardiva": "",
-                "vuoto_max_giorni": None, "vuoto_da_giorno": None, "vuoto_a_giorno": None,
-            })
+    records: list[dict] = []
+    for epoch, grp in circ.groupby("epoch_kyr", sort=True):
+        idx = grp["score"].idxmin()
+        best = grp.loc[idx]
+        records.append({
+            "epoch_kyr":     epoch,
+            "HIP":           int(best["HIP"]),
+            "star_label":    best["star_label"],
+            "Vmag":          best["Vmag"],
+            "dec_deg":       best["dec_deg"],
+            "pole_dist_deg": best["pole_dist"],
+            "score":         best["score"],
+        })
 
     out = pd.DataFrame(records)
-    log(f"Epoch summary: {len(out)} epochs")
+    log(f"  Pole star table: {len(out):,} epochs")
     return out
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+def build_epoch_summary(df: pd.DataFrame, heliacal: pd.DataFrame) -> pd.DataFrame:
+    vis_count  = (df[df["visibility"] == "VISIBILE"]
+                  .groupby("epoch_kyr")["HIP"].nunique()
+                  .rename("n_visible"))
+    circ_count = (df[df["visibility"] == "CIRCUMPOLARE"]
+                  .groupby("epoch_kyr")["HIP"].nunique()
+                  .rename("n_circumpolare"))
+    hel_count  = (heliacal.groupby("epoch_kyr")["HIP"].nunique()
+                  .rename("n_heliacal") if not heliacal.empty
+                  else pd.Series(dtype=int, name="n_heliacal"))
+
+    out = (pd.concat([vis_count, circ_count, hel_count], axis=1)
+             .fillna(0).astype(int)
+             .reset_index()
+             .sort_values("epoch_kyr", ascending=False))
+    log(f"  Epoch summary: {len(out):,} epochs")
+    return out
+
+
 def main() -> None:
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    args = parse_args()
 
-    df = load_data(INPUT_CSV)
+    if args.input:
+        input_path = Path(args.input)
+    else:
+        input_path = (Path("fullcat.csv.gz") if Path("fullcat.csv.gz").exists()
+                      else Path("fullcat.csv"))
 
-    log("Building heliacal events table ...")
+    out_dir = Path(args.outdir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    df = load_data(input_path, args.lat, args.Tmin, args.Tmax, args.dt)
+
+    log("Building heliacal table ...")
     heliacal = build_heliacal_table(df)
-    out_path = OUTPUT_DIR / "heliacal_events.csv"
-    heliacal.to_csv(out_path, index=False, float_format="%.2f")
-    log(f"  → {out_path}")
 
     log("Building seasonal calendar ...")
     seasonal = build_seasonal_calendar(heliacal)
-    out_path = OUTPUT_DIR / "seasonal_calendar.csv"
-    seasonal.to_csv(out_path, index=False, float_format="%.2f")
-    log(f"  → {out_path}")
 
-    log("Detecting discontinuities ...")
+    log("Building discontinuities ...")
     disc = build_discontinuities(df)
-    out_path = OUTPUT_DIR / "discontinuities.csv"
-    disc.to_csv(out_path, index=False, float_format="%.2f")
-    log(f"  → {out_path}")
+
+    log("Building pole star table ...")
+    poles = build_pole_star_table(df)
 
     log("Building epoch summary ...")
     summary = build_epoch_summary(df, heliacal)
-    out_path = OUTPUT_DIR / "epoch_summary.csv"
-    summary.to_csv(out_path, index=False, float_format="%.2f")
-    log(f"  → {out_path}")
 
-    # Quick sanity print
-    print("\n--- Esempi discontinuità (prime 20) ---")
-    print(disc[["epoch_a_kyr", "star_label", "Vmag", "evento", "dettaglio"]].head(20).to_string(index=False))
+    heliacal.to_csv(out_dir / "heliacal_events.csv",   index=False)
+    seasonal.to_csv(out_dir / "seasonal_calendar.csv",  index=False)
+    disc.to_csv(    out_dir / "discontinuities.csv",    index=False)
+    poles.to_csv(   out_dir / "pole_stars.csv",         index=False)
+    summary.to_csv( out_dir / "epoch_summary.csv",      index=False)
 
-    print("\n--- Riepilogo epoche (prime 10) ---")
-    print(summary.head(10).to_string(index=False))
-
-    log("Done.")
+    log(f"Done. Output in {out_dir}/")
+    log(f"  heliacal_events.csv    {len(heliacal):,} rows")
+    log(f"  seasonal_calendar.csv  {len(seasonal):,} rows")
+    log(f"  discontinuities.csv    {len(disc):,} rows")
+    log(f"  pole_stars.csv         {len(poles):,} rows")
+    log(f"  epoch_summary.csv      {len(summary):,} rows")
 
 
 if __name__ == "__main__":
