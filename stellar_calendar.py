@@ -58,6 +58,29 @@ _SEASON_LABELS = [
 
 SHIFT_THRESHOLD_DAYS = 30.0   # flag discontinuity if rising day shifts more than this
 
+# --- Filter for heliacal_events and seasonal_calendar ---
+# Keep stars with Vmag <= this threshold, PLUS all stars in SPECIAL_HIP regardless of magnitude.
+VMAG_THRESHOLD = 2.0
+
+# Asterisms to always include: Pleiades, Orion Belt, Southern Cross
+SPECIAL_HIP: frozenset[int] = frozenset({
+    # Pleiadi (members in Hp<4 catalog)
+    17702,  # Alcyone   V=2.87
+    17499,  # Electra   V=3.70
+    17847,  # Atlas     V=3.62
+    17573,  # Maia      V=3.88
+    # Cintura di Orione
+    25930,  # Mintaka   V=2.25
+    26311,  # Alnilam   V=1.69  (also V<=2.0, listed for clarity)
+    26727,  # Alnitak   V=1.77  (idem)
+    # Croce del Sud
+    60718,  # Acrux     V=0.78  (idem)
+    62434,  # Mimosa    V=1.25  (idem)
+    61084,  # Gacrux    V=1.62  (idem)
+    59747,  # Imai      V=2.79
+    60260,  # Ginan     V=3.59
+})
+
 
 # ---------------------------------------------------------------------------
 # Utilities
@@ -85,6 +108,23 @@ def star_label(row: pd.Series) -> str:
     if pd.notna(row.get("Bayer")) and str(row["Bayer"]).strip():
         return str(row["Bayer"]).strip()
     return f"HIP {int(row['HIP'])}"
+
+
+def asterism_label(hip: int) -> str:
+    """Return asterism tag for special HIPs, empty string otherwise."""
+    pleiadi = {17702, 17499, 17847, 17573}
+    orione  = {25930, 26311, 26727}
+    crux    = {60718, 62434, 61084, 59747, 60260}
+    if hip in pleiadi: return "Pleiadi"
+    if hip in orione:  return "Cintura Orione"
+    if hip in crux:    return "Croce del Sud"
+    return ""
+
+
+def filter_bright(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep only V<=VMAG_THRESHOLD stars plus special asterism members."""
+    mask = (df["Vmag"] <= VMAG_THRESHOLD) | df["HIP"].isin(SPECIAL_HIP)
+    return df[mask].copy()
 
 
 # ---------------------------------------------------------------------------
@@ -124,21 +164,25 @@ def load_data(path: Path) -> pd.DataFrame:
 # Heliacal events table
 # ---------------------------------------------------------------------------
 def build_heliacal_table(df: pd.DataFrame) -> pd.DataFrame:
-    """One row per (epoch, star) where star is VISIBILE. Sorted by epoch then rising day."""
+    """One row per (epoch, star) where star is VISIBILE, filtered to bright+special.
+    Sorted by epoch then rising day."""
     vis = df[df["visibility"] == "VISIBILE"].copy()
+    vis = filter_bright(vis)
 
-    vis["season_rising"] = day_to_season(vis["heliacal_rising_day"])
+    vis["season_rising"]  = day_to_season(vis["heliacal_rising_day"])
     vis["season_setting"] = day_to_season(vis["heliacal_setting_day"])
+    vis["asterismo"] = vis["HIP"].apply(lambda h: asterism_label(int(h)))
 
     cols = [
-        "epoch_kyr", "HIP", "star_label", "Vmag",
+        "epoch_kyr", "HIP", "star_label", "asterismo", "Vmag",
         "heliacal_rising_day", "season_rising",
         "heliacal_setting_day", "season_setting",
         "acronychal_rising_day", "acronychal_setting_day",
         "dec_deg", "arcus_visionis_deg",
     ]
     out = vis[cols].sort_values(["epoch_kyr", "heliacal_rising_day"], ascending=[False, True])
-    log(f"Heliacal table: {len(out):,} rows")
+    log(f"Heliacal table: {len(out):,} rows "
+        f"(V<={VMAG_THRESHOLD} + {len(SPECIAL_HIP)} stelle speciali)")
     return out.reset_index(drop=True)
 
 
@@ -147,34 +191,37 @@ def build_heliacal_table(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 def build_seasonal_calendar(heliacal: pd.DataFrame) -> pd.DataFrame:
     """
-    For each epoch and each seasonal window, list stars whose heliacal rising
-    falls inside that window.  Output: one row per (epoch, season_window, star).
+    For each epoch and each seasonal window, list stars (already filtered to
+    bright+special) whose heliacal rising falls inside that window.
+    Output: one row per (epoch, season_window, star), brightest first.
     """
     records = []
     for _, group in heliacal.groupby("epoch_kyr", sort=False):
-        epoch = group["epoch_kyr"].iloc[0]
+        epoch  = group["epoch_kyr"].iloc[0]
         rising = group["heliacal_rising_day"].values
         labels = group["star_label"].values
         vmags  = group["Vmag"].values
         hips   = group["HIP"].values
+        aster  = group["asterismo"].values
 
         for short, label_it, d_start, d_end in SEASONS:
             if d_start >= d_end:
                 continue
             in_window = (rising >= d_start) & (rising < d_end)
-            stars_in = [(hips[i], labels[i], vmags[i], rising[i])
+            stars_in = [(hips[i], labels[i], vmags[i], rising[i], aster[i])
                         for i in np.where(in_window)[0]]
             stars_in.sort(key=lambda x: x[2])  # brightest first
-            for hip, lbl, vmag, day in stars_in:
+            for hip, lbl, vmag, day, ast in stars_in:
                 records.append({
-                    "epoch_kyr": epoch,
-                    "window_short": short,
-                    "window_label": label_it,
-                    "day_start": d_start,
-                    "day_end": d_end,
-                    "HIP": hip,
-                    "star_label": lbl,
-                    "Vmag": round(vmag, 2),
+                    "epoch_kyr":         epoch,
+                    "window_short":      short,
+                    "window_label":      label_it,
+                    "day_start":         d_start,
+                    "day_end":           d_end,
+                    "HIP":               hip,
+                    "star_label":        lbl,
+                    "asterismo":         ast,
+                    "Vmag":              round(vmag, 2),
                     "heliacal_rising_day": round(day, 1),
                 })
 
