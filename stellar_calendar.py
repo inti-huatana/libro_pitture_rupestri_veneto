@@ -72,6 +72,55 @@ def _period_label(epoch_kyr) -> str:
     return ""
 
 
+# ── Culture/industrie litiche (anni espressi in kyr, 0 = oggi) ──────────────
+# Sottodivisione più fine di PERIODS, copertura continua -100→0 senza buchi.
+# Musteriano ed Epigravettiano: chapters/03_cosa_si_conosce_veneto.tex,
+# Riparo Tagliente, "sequenza copre dal Musteriano (circa 55.000 anni prima
+# dell'anno zero, presenza neandertaliana documentata) fino all'Epigravettiano
+# finale (circa 13.500)" (bartolomei1992, già in bibliografia); fine del
+# Musteriano/inizio Aurignaziano a Grotta di Fumane, 40.000-41.000 anni prima
+# dell'anno zero, datazioni ESR/U-series e micromorfologia pubblicate nel
+# 2025 (Falguères et al., Journal of Quaternary Science; Kehl et al.,
+# Geoarchaeology, entrambe citate nello stesso capitolo). Epigravettiano
+# (23.000-11.000), Sauveterriano (12.700-9.500) e Castelnoviano (9.500-7.500):
+# chapters/14_glossario.tex, voci corrispondenti. Aurignaziano e Gravettiano
+# non hanno una datazione propria nel libro (che li nomina ma non li data
+# singolarmente): i confini qui usati sono la periodizzazione standard per
+# il Paleolitico superiore italiano (v. Palma di Cesnola, "Il Paleolitico
+# superiore in Italia", 1993, già in bibliografia come palma_di_cesnola1993),
+# non un dato specifico del libro — segnalato esplicitamente. Alcuni confini
+# sono il punto medio di un intervallo di transizione sfumato in letteratura
+# (stesso criterio già usato per PERIODS), per garantire una copertura
+# continua senza sovrapposizioni né buchi. Neolitico-età del Ferro: nomi
+# di cultura ripresi da chapters/15_appendice_siti.tex (Vasi a Bocca
+# Quadrata, cultura di Polada/Protovillanoviana, cultura atestina) — qui un
+# solo nome per periodo, non una sotto-periodizzazione fine come per il
+# Paleolitico, perché il libro non la fornisce con la stessa risoluzione.
+CULTURES: list[tuple[str, float, float]] = [
+    ("Musteriano",                                      -100.00, -40.50),
+    ("Aurignaziano",                                      -40.50, -33.00),
+    ("Gravettiano",                                       -33.00, -23.00),
+    ("Epigravettiano",                                    -23.00, -11.85),
+    ("Sauveterriano",                                     -11.85,  -9.50),
+    ("Castelnoviano",                                      -9.50,  -7.75),
+    ("Neolitico (Vasi a Bocca Quadrata)",                  -7.75,  -5.25),
+    ("Eneolitico",                                         -5.25,  -4.25),
+    ("Età del Bronzo (Polada / Protovillanoviana)",        -4.25,  -2.75),
+    ("Età del Ferro (cultura atestina, Veneti antichi)",   -2.75,   0.00),
+]
+
+
+def _culture_label(epoch_kyr) -> str:
+    try:
+        e = float(epoch_kyr)
+    except (TypeError, ValueError):
+        return ""
+    for name, start, end in CULTURES:
+        if start <= e <= end:
+            return name
+    return ""
+
+
 # ── Finestre stagionali: (nome, giorno_centrale, mezza_ampiezza) ────────────
 # giorno_centrale = giorni dall'equinozio di primavera (giorno 0).
 # Mezza ampiezza = 10 giorni per tutte le finestre (non 5: un margine più
@@ -126,15 +175,23 @@ CLIMATE_PHASES: list[tuple[str, float, float, float]] = [
 ]
 
 
-def _climate_offset(epoch_kyr) -> float:
+def _climate_phase_lookup(epoch_kyr) -> tuple[str, float]:
     try:
         e = float(epoch_kyr)
     except (TypeError, ValueError):
-        return 0.0
-    for _, start, end, offset in CLIMATE_PHASES:
+        return "", 0.0
+    for label, start, end, offset in CLIMATE_PHASES:
         if start <= e <= end:
-            return offset
-    return 0.0
+            return label, offset
+    return "", 0.0
+
+
+def _climate_offset(epoch_kyr) -> float:
+    return _climate_phase_lookup(epoch_kyr)[1]
+
+
+def _climate_phase_label(epoch_kyr) -> str:
+    return _climate_phase_lookup(epoch_kyr)[0]
 
 
 # Paleolitico (medio e superiore): nessuna semina/raccolta. "Disgelo" e
@@ -540,6 +597,8 @@ def build_epoch_summary(df: pd.DataFrame, heliacal: pd.DataFrame) -> pd.DataFram
              .reset_index()
              .sort_values("epoch_kyr", ascending=False))
     out["periodo"] = out["epoch_kyr"].apply(_period_label)
+    out["fase_climatica"] = out["epoch_kyr"].apply(_climate_phase_label)
+    out["cultura"] = out["epoch_kyr"].apply(_culture_label)
     log(f"  Epoch summary: {len(out):,} epochs")
     return out
 
