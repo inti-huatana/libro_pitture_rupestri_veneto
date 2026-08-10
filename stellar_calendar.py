@@ -55,10 +55,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--input",  default=None,     help="Input CSV path")
     p.add_argument("--outdir", default="output",  help="Output directory")
     p.add_argument("--lat",    type=float, default=45.0,   help="Observer latitude in degrees")
-    p.add_argument("--Tmin",   type=float, default=-100.0, help="Min epoch in kyr")
+    p.add_argument("--Tmin",   type=float, default=-100.0, help="Min epoch in kyr (200 or -200 both mean -200 kyr BP)")
     p.add_argument("--Tmax",   type=float, default=0.0,    help="Max epoch in kyr")
     p.add_argument("--dt",     type=float, default=1.0,    help="Timestep in kyr")
-    return p.parse_args()
+    args = p.parse_args()
+    # Accept positive Tmin as meaning negative (years before present)
+    if args.Tmin > args.Tmax:
+        args.Tmin = -abs(args.Tmin)
+    return args
 
 
 def _star_label(row) -> str:
@@ -119,6 +123,8 @@ def load_data(input_path: Path, lat_deg: float,
     df = df[alt >= 2.0].copy()
     log(f"  After meridian alt >=2° filter: {len(df):,} rows")
 
+    if df.empty:
+        raise SystemExit("No data after filtering — check --Tmin/--Tmax against the file's epoch range.")
     df["star_label"] = df.apply(_star_label, axis=1)
     return df.reset_index(drop=True)
 
