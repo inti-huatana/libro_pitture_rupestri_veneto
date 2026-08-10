@@ -27,8 +27,8 @@ import pandas as pd
 # ── Asterism representatives (4 stars only) ─────────────────────────────────
 ASTERISM_HIP: dict[int, str] = {
     17702: "Pleiadi",
-    26727: "Cin.Orione",
-    60718: "Cr.Sud",
+    26727: "Orione",
+    60718: "CroceSud",
     20894: "Iadi",
 }
 
@@ -328,18 +328,27 @@ def parse_args() -> argparse.Namespace:
 
 
 def _star_label(row) -> str:
+    """Nome della stella, sempre e solo il suo nome proprio: l'appartenenza
+    a un asterismo tracciato non va nel nome, ma nella colonna dedicata
+    (heliacal_events.csv) o sostituisce il nome (tutti gli altri file, via
+    _display_label)."""
     name  = str(row.get("NAME",  "")).strip()
     bayer = str(row.get("Bayer", "")).strip()
     if name and name != "nan":
-        label = name
-    elif bayer and bayer != "nan":
-        label = bayer
-    else:
-        label = f"HIP {int(row['HIP'])}"
+        return name
+    if bayer and bayer != "nan":
+        return bayer
+    return f"HIP {int(row['HIP'])}"
+
+
+def _display_label(row) -> str:
+    """Nome da mostrare in tutti i file tranne heliacal_events.csv: se la
+    stella è il rappresentante di uno dei 4 asterismi tracciati, si mostra
+    il nome dell'asterismo al posto del nome della stella."""
     hip = int(row["HIP"])
     if hip in ASTERISM_HIP:
-        label += f" ({ASTERISM_HIP[hip]})"
-    return label
+        return ASTERISM_HIP[hip]
+    return row["star_label"]
 
 
 def _season_label(day, epoch_kyr) -> str:
@@ -388,6 +397,7 @@ def load_data(input_path: Path, lat_deg: float,
     if df.empty:
         raise SystemExit("No data after filtering — check --Tmin/--Tmax against the file's epoch range.")
     df["star_label"] = df.apply(_star_label, axis=1)
+    df["display_label"] = df.apply(_display_label, axis=1)
     df["periodo"] = df["epoch_kyr"].apply(_period_label)
     return df.reset_index(drop=True)
 
@@ -413,59 +423,75 @@ def _pick_event(row) -> tuple[float, str, str]:
 
 
 def build_heliacal_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Per epoca: top-2 stelle più brillanti + 1 per asterismo, ma solo fra
-    le stelle il cui evento (levata o tramonto, mai entrambi, v. _pick_event)
-    cade in una finestra stagionale attiva. Una stella la cui levata e il cui
-    tramonto cadono entrambi fuori da ogni finestra non compare: non
-    avrebbe nessun legame stagionale da mostrare."""
+    """Una riga per ogni evento stagionale realmente marcato da una stella,
+    non una selezione arbitraria delle stelle più brillanti. Per ogni
+    evento attivo in un'epoca (equinozio, bramito, mietitura, ecc.):
+    - se una qualunque stella non-asterismo ha levata o tramonto (mai
+      entrambi, v. _pick_event) in quella finestra, si prende la più
+      brillante fra tutte quelle che coincidono → 1 riga;
+    - se uno dei 4 asterismi tracciati marca lo stesso evento con una
+      stella diversa da quella già scelta, si aggiunge una riga separata
+      per l'asterismo (può succedere per più di un asterismo alla volta).
+    Un evento senza nessuna stella compatibile non produce righe: non si
+    forza né si limita artificialmente il numero di eventi trovati."""
     vis = df[
         (df["visibility"] == "VISIBILE") &
         df["heliacal_rising_day"].notna()
     ].copy()
-    vis["asterism"] = vis["HIP"].map(ASTERISM_HIP).fillna("")
 
     records: list[dict] = []
     for epoch, grp in vis.groupby("epoch_kyr", sort=True):
-        events = {}  # HIP -> (day, tipo, season)
+        matches: dict[str, list[tuple]] = {}  # evento -> [(day, tipo, star_row), ...]
         for _, row in grp.iterrows():
             day, tipo, season = _pick_event(row)
             if season:
-                events[row["HIP"]] = (day, tipo, season)
-        if not events:
-            continue
+                matches.setdefault(season, []).append((day, tipo, row))
 
-        seasonal = grp[grp["HIP"].isin(events)].sort_values("Vmag")
-        top2 = seasonal.head(2)
-        selected = set(top2["HIP"].tolist())
+        for evento, cand in matches.items():
+            non_aster = [c for c in cand if int(c[2]["HIP"]) not in ASTERISM_HIP]
+            chosen_hips: set[int] = set()
 
-        extra: list[pd.Series] = []
-        for hip in ASTERISM_HIP:
-            if hip not in selected:
-                rows = seasonal[seasonal["HIP"] == hip]
-                if not rows.empty:
-                    extra.append(rows.iloc[0])
-                    selected.add(hip)
+            if non_aster:
+                day, tipo, row = min(non_aster, key=lambda c: c[2]["Vmag"])
+                chosen_hips.add(int(row["HIP"]))
+                records.append({
+                    "epoch_kyr":      epoch,
+                    "periodo":        row["periodo"],
+                    "fase_climatica": _climate_phase_label(epoch),
+                    "cultura":        _culture_label(epoch),
+                    "evento":         evento,
+                    "HIP":            int(row["HIP"]),
+                    "star_label":     row["star_label"],
+                    "asterismo":      "",
+                    "Vmag":           row["Vmag"],
+                    "giorno_evento":  day,
+                    "tipo_evento":    tipo,
+                })
 
-        chosen = pd.concat([top2] + ([pd.DataFrame(extra)] if extra else []))
-        for _, row in chosen.iterrows():
-            day, tipo, season = events[row["HIP"]]
-            records.append({
-                "epoch_kyr":      row["epoch_kyr"],
-                "periodo":        row["periodo"],
-                "fase_climatica": _climate_phase_label(row["epoch_kyr"]),
-                "cultura":        _culture_label(row["epoch_kyr"]),
-                "HIP":            int(row["HIP"]),
-                "star_label":     row["star_label"],
-                "asterism":       row["asterism"],
-                "Vmag":           row["Vmag"],
-                "giorno_evento":  day,
-                "tipo_evento":    tipo,
-                "stagione":       season,
-            })
+            for hip, aster_name in ASTERISM_HIP.items():
+                if hip in chosen_hips:
+                    continue
+                aster_cand = [c for c in cand if int(c[2]["HIP"]) == hip]
+                if not aster_cand:
+                    continue
+                day, tipo, row = aster_cand[0]
+                records.append({
+                    "epoch_kyr":      epoch,
+                    "periodo":        row["periodo"],
+                    "fase_climatica": _climate_phase_label(epoch),
+                    "cultura":        _culture_label(epoch),
+                    "evento":         evento,
+                    "HIP":            int(row["HIP"]),
+                    "star_label":     row["star_label"],
+                    "asterismo":      aster_name,
+                    "Vmag":           row["Vmag"],
+                    "giorno_evento":  day,
+                    "tipo_evento":    tipo,
+                })
 
     out = pd.DataFrame(records)
     if not out.empty:
-        out = out.sort_values(["epoch_kyr", "Vmag"])
+        out = out.sort_values(["epoch_kyr", "evento", "Vmag"])
     log(f"  Heliacal events: {len(out):,} rows")
     return out
 
@@ -510,7 +536,7 @@ def build_seasonal_calendar(df: pd.DataFrame) -> pd.DataFrame:
                 continue
             vmag = star["Vmag"]
             if season not in best or vmag < best[season][0]:
-                best[season] = (vmag, f"{star['star_label']} ({vmag:.1f})")
+                best[season] = (vmag, f"{star['display_label']} ({vmag:.1f})")
 
         for name in all_event_names:
             if name in active_names and name in best:
@@ -570,7 +596,8 @@ def build_discontinuities(df: pd.DataFrame) -> pd.DataFrame:
         sub["fase_climatica"] = sub["epoch_a_kyr"].apply(_climate_phase_label)
         sub["cultura"]        = sub["epoch_a_kyr"].apply(_culture_label)
         parts.append(sub[["epoch_a_kyr", "periodo", "fase_climatica", "cultura",
-                           "HIP", "star_label", "Vmag", "evento", "dettaglio"]])
+                           "HIP", "display_label", "Vmag", "evento", "dettaglio"]]
+                     .rename(columns={"display_label": "star_label"}))
 
     if not parts:
         return pd.DataFrame()
@@ -601,7 +628,7 @@ def build_pole_star_table(df: pd.DataFrame) -> pd.DataFrame:
             "cultura":        _culture_label(epoch),
         }
         for rank, (_, star) in enumerate(nearest3.iterrows(), start=1):
-            row[f"stella_{rank}"]    = star["star_label"]
+            row[f"stella_{rank}"]    = star["display_label"]
             row[f"mag_{rank}"]       = star["Vmag"]
             row[f"dist_polo_{rank}_deg"] = star["pole_dist_deg"]
         rows.append(row)

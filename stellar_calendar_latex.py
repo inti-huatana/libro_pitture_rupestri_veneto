@@ -113,16 +113,20 @@ def build_heliacal_section(heliacal: pd.DataFrame, epoch_min: float, epoch_max: 
         else:
             epoch_label = ""
 
-        evento = "levata" if row.get("tipo_evento") == "levata" else "tramonto"
-        stagione = SEASON_ABBR.get(str(row.get("stagione", "nan")), "---")
+        tipo = "levata" if row.get("tipo_evento") == "levata" else "tramonto"
+        evento_abbr = SEASON_ABBR.get(str(row.get("evento", "nan")), "---")
+        stella = row["star_label"]
+        asterismo = str(row.get("asterismo", "") or "")
+        if asterismo:
+            stella = f"{stella} ({asterismo})"
 
         lines.append(
             f"{tex_escape(epoch_label)} & "
             f"{tex_escape(str(row.get('periodo', '')))} & "
-            f"{tex_escape(row['star_label'])} & "
+            f"{tex_escape(stella)} & "
             f"{vmag_fmt(row['Vmag'])} & "
-            f"{evento} (g.\\,{day_fmt(row['giorno_evento'])}) & "
-            f"{stagione} \\\\"
+            f"{tipo} (g.\\,{day_fmt(row['giorno_evento'])}) & "
+            f"{evento_abbr} \\\\"
         )
 
     lines.append("\\end{longtable}")
