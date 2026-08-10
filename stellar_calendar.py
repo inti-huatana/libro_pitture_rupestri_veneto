@@ -53,8 +53,11 @@ PERIODS: list[tuple[str, float, float]] = [
 ]
 
 # Periodi con economia di caccia-raccolta (nessuna semina/raccolta agricola)
-# vs. periodi con economia agro-pastorale.
-HUNTER_GATHERER_PERIODS = {"Paleolitico medio", "Paleolitico superiore", "Mesolitico"}
+# vs. periodi con economia agro-pastorale. Paleolitico e Mesolitico hanno
+# ciascuno il proprio set di finestre (vedi PALEO_WINDOWS/MESO_WINDOWS
+# più sotto): stesso modo di sussistenza, marcatori diversi.
+PALEO_PERIODS = {"Paleolitico medio", "Paleolitico superiore"}
+MESO_PERIODS = {"Mesolitico"}
 FARMING_PERIODS = {"Neolitico", "Eneolitico (età del Rame)", "Età del Bronzo", "Età del Ferro"}
 
 
@@ -85,21 +88,55 @@ UNIVERSAL_WINDOWS: list[tuple[str, float, float]] = [
     ("Solstizio d'inverno",   276.0, 10.0),
 ]
 
-# Cacciatori-raccoglitori (Paleolitico medio/superiore, Mesolitico): nessuna
-# semina/raccolta, marcatori stagionali legati al comportamento animale
-# (fotoperiodico, quindi stabile su scala di millenni a differenza delle
-# pratiche colturali). Giorno 200 ≈ 6 ottobre, giorno 250 ≈ 25 novembre.
-HG_WINDOWS: list[tuple[str, float, float]] = [
-    # Bramito del cervo, picco fine settembre-inizio ottobre: Georgii (1981,
-    # già in bibliografia del libro per l'home range del cervo maschio in
-    # "periodo degli amori"); Clutton-Brock, Guinness & Albon, "Red Deer:
-    # Behavior and Ecology of Two Sexes" (1982).
-    ("Bramito del cervo",   200.0, 10.0),
-    # Amori del camoscio, novembre-dicembre: Papakostas et al. (2026, già in
-    # bibliografia per l'home range del camoscio); Apollonio, Andersen &
-    # Putman (a cura di), "European Ungulates and their Management in the
-    # 21st Century" (2010).
-    ("Amori del camoscio",  250.0, 10.0),
+# Paleolitico (medio e superiore): nessuna semina/raccolta. Marcatori legati
+# al clima glaciale/tardoglaciale e alla biologia della megafauna cacciata.
+# Giorno 25 ≈ 14 aprile, giorno 85 ≈ 13 giugno, giorno 225 ≈ 31 ottobre.
+# Cautela esplicita (nello stile del capitolo 4 del libro): il Paleolitico
+# copre oscillazioni climatiche enormi — dal massimo glaciale (Ravazzi et
+# al. 2007: estati più fredde di 8-10°C, linea delle nevi ~1.000-1.200 m
+# più bassa) agli interstadi caldi (Bølling-Allerød) — quindi un singolo
+# giorno fisso per "disgelo" e "prime nevicate" è un'approssimazione di
+# primo ordine, non una data puntuale valida per l'intero periodo.
+PALEO_WINDOWS: list[tuple[str, float, float]] = [
+    # Disgelo dei fiumi: il disgelo primaverile è guidato soprattutto
+    # dall'aumento dell'insolazione/fotoperiodo più che dalla temperatura
+    # assoluta, quindi resta ancorato a ridosso dell'equinozio anche in
+    # climi più freddi dell'attuale (v. cautela sopra).
+    ("Disgelo dei fiumi",                      25.0, 10.0),
+    # Prime nevicate in pianura/collina: in un clima mediamente più freddo
+    # dell'attuale (Ravazzi et al. 2007), l'arrivo della neve a quote basse
+    # è anticipato rispetto a oggi; qui si stima fine ottobre-inizio
+    # novembre invece di novembre-dicembre.
+    ("Prime nevicate in pianura/collina",     225.0, 10.0),
+    # Nascita dei piccoli (stambecco, camoscio, cervo): stambecco
+    # giugno-luglio, Gran Paradiso — Grignolio, Rossi, Bertolotto, Bassano &
+    # Apollonio (2007), J. Wildlife Management 71(3) [Apollonio già in
+    # bibliografia del libro per luccarini2006]; camoscio, tarda
+    # primavera-inizio estate — Kourkgy et al. (2016), J. Animal Ecology;
+    # cervo, giugno — dato coerente con georgii1981 (già in bibliografia)
+    # sul periodo riproduttivo. Il capitolo 6 del libro descrive già la
+    # caccia estiva ai "branchi di femmine con i loro piccoli" a Riparo
+    # Soman (deangelis2021) — questa finestra formalizza in giorni quello
+    # stesso fenomeno.
+    ("Nascita dei piccoli (stambecco, camoscio, cervo)", 85.0, 10.0),
+]
+
+# Mesolitico: economia di caccia-raccolta come il Paleolitico, ma con un
+# pattern insediativo diverso e meglio documentato — risalita stagionale
+# verso siti d'alta quota. Fonte diretta per l'area di studio: Cima Dodici,
+# Prealpi vicentine/Altopiano di Asiago, 2.000-2.100 m, frequentazione
+# mesolitica antica stagionale (Peresani, Visentin et al. 2025, Quaternary
+# International, "Highland settling in the Early Mesolithic. Insight from
+# the record of Cima Dodici open-air sites, Venetian pre-Alps"). Bramito e
+# amori sono ripresi dal Paleolitico: sono eventi fotoperiodici, quindi
+# validi anche per il Mesolitico, e coerenti con la continuità della caccia
+# a stambecco/camoscio nel Sauveterriano/Castelnoviano documentata nella
+# stessa fonte.
+MESO_WINDOWS: list[tuple[str, float, float]] = [
+    ("Salita stagionale in quota",                   65.0, 10.0),
+    ("Discesa a valle (fine stagione d'alta quota)", 225.0, 10.0),
+    ("Bramito del cervo",                            200.0, 10.0),
+    ("Amori del camoscio",                           250.0, 10.0),
 ]
 
 # Comunità agro-pastorali (Neolitico → età del Ferro): calendario cerealicolo
@@ -122,13 +159,19 @@ FARM_WINDOWS: list[tuple[str, float, float]] = [
 
 
 def _active_windows(epoch_kyr) -> list[tuple[str, float, float]]:
+    """Finestre specifiche del periodo prima, universali dopo: se un evento
+    stagionale specifico (es. nascita dei piccoli) cade nello stesso giorno
+    di un equinozio/solstizio, vince l'evento più specifico."""
     period = _period_label(epoch_kyr)
-    windows = list(UNIVERSAL_WINDOWS)
-    if period in HUNTER_GATHERER_PERIODS:
-        windows += HG_WINDOWS
+    if period in PALEO_PERIODS:
+        extra = PALEO_WINDOWS
+    elif period in MESO_PERIODS:
+        extra = MESO_WINDOWS
     elif period in FARMING_PERIODS:
-        windows += FARM_WINDOWS
-    return windows
+        extra = FARM_WINDOWS
+    else:
+        extra = []
+    return extra + UNIVERSAL_WINDOWS
 
 
 def log(msg: str) -> None:
@@ -294,8 +337,14 @@ def build_seasonal_calendar(df: pd.DataFrame) -> pd.DataFrame:
     ].copy()
 
     all_event_names = [w[0] for w in UNIVERSAL_WINDOWS] + \
-                       [w[0] for w in HG_WINDOWS] + \
+                       [w[0] for w in PALEO_WINDOWS] + \
+                       [w[0] for w in MESO_WINDOWS] + \
                        [w[0] for w in FARM_WINDOWS]
+    # Deduplica preservando l'ordine di prima comparsa, nel caso in cui una
+    # revisione futura riusi lo stesso nome di evento in più liste (oggi non
+    # succede: nessun nome è condiviso tra le liste).
+    seen: set[str] = set()
+    all_event_names = [n for n in all_event_names if not (n in seen or seen.add(n))]
 
     rows: list[dict] = []
     for epoch, grp in vis.groupby("epoch_kyr", sort=True):
