@@ -96,6 +96,12 @@ KMS_TO_PCYR = 1.0227121650537077e-6
 MAS_TO_RAD = np.deg2rad(1.0 / 3_600_000.0)
 TROPICAL_YEAR_D = 365.2422
 
+# Solar-longitude scan grid for horizon_events() root bracketing. Fixed once
+# at import time: the same grid is reused for every epoch and every star,
+# so the (epoch, grid) solar position table can be precomputed once instead
+# of recomputed per star (see precompute_sun_grid).
+LAM_GRID = np.linspace(0.0, 2.0 * np.pi, 1441)
+
 # ICRS -> Galactic rotation matrix, IAU/J2000 convention.
 R_ICRS_TO_GAL = np.array(
     [
@@ -232,6 +238,24 @@ def precompute_earth_orientation(times_kyr: np.ndarray, use_nutation: bool):
     return epj, r_true, eps_true
 
 
+def precompute_sun_grid(eps_true: np.ndarray, lam_grid: np.ndarray = LAM_GRID):
+    """Sun RA/Dec over the solar-longitude scan grid, for every epoch, in one
+    vectorized pass. Depends only on obliquity (epoch), never on the star or
+    on which of the 4 horizon events is being sought — computing it here,
+    once, replaces what used to be a per-star-per-event recomputation of the
+    same 1441-point grid (up to ~n_stars*4 times redundant per epoch)."""
+    lam = lam_grid[None, :]        # (1, G)
+    eps = eps_true[:, None]        # (E, 1)
+    cl, sl = np.cos(lam), np.sin(lam)
+    ce, se = np.cos(eps), np.sin(eps)
+    x = np.broadcast_to(cl, (eps.shape[0], lam_grid.shape[0]))
+    y = ce * sl
+    z = se * sl
+    sun_ra = np.mod(np.arctan2(y, x), 2.0 * np.pi)
+    sun_dec = np.arcsin(np.clip(z, -1.0, 1.0))
+    return sun_ra, sun_dec  # each (E, G)
+
+
 def unit_basis(ra: float, dec: float):
     ca, sa = math.cos(ra), math.sin(ra)
     cd, sd = math.cos(dec), math.sin(dec)
@@ -287,29 +311,41 @@ def sun_altitude(lam: float, lst: float, lat: float, eps: float):
     return alt, h
 
 
-def roots_over_solar_longitude(lst: float, lat: float, eps: float, target_alt: float):
+def roots_over_solar_longitude(lst: float, lat: float, eps: float, target_alt: float,
+                                sun_ra_i: np.ndarray, sun_dec_i: np.ndarray,
+                                grid: np.ndarray = LAM_GRID):
     # Fine enough to bracket all simple annual roots, followed by Brent refinement.
-    grid = np.linspace(0.0, 2.0 * np.pi, 1441)
-    vals = np.empty_like(grid)
+    # sun_ra_i/sun_dec_i are the precomputed solar position for this epoch over
+    # `grid` (see precompute_sun_grid) — vectorized here instead of the
+    # 1441 scalar sun_altitude() calls this used to make per invocation.
+    h = wrap_pi(lst - sun_ra_i)
+    vals = np.arcsin(
+        math.sin(lat) * np.sin(sun_dec_i)
+        + math.cos(lat) * np.cos(sun_dec_i) * np.cos(h)
+    ) - target_alt
 
-    for i, lam in enumerate(grid):
-        vals[i] = sun_altitude(lam, lst, lat, eps)[0] - target_alt
+    # Same branch logic as the original per-interval loop (if fa==0: use a;
+    # elif fa*fb>0: no root; else: brentq), just located with vectorized
+    # boolean masks instead of a 1440-iteration Python loop, since `vals` is
+    # now already an array. brentq itself still runs only on the handful of
+    # bracketed intervals (typically 0-4), same as before.
+    fa = vals[:-1]
+    fb = vals[1:]
+    exact_idx = np.where(fa == 0.0)[0]
+    cross_idx = np.where((fa != 0.0) & (fa * fb <= 0.0))[0]
+
+    found = [(int(i), float(grid[i])) for i in exact_idx]
+    for i in cross_idx:
+        a, b = grid[i], grid[i + 1]
+        root = brentq(
+            lambda x: sun_altitude(x, lst, lat, eps)[0] - target_alt,
+            a, b, xtol=1e-12, rtol=1e-12,
+        )
+        found.append((int(i), root))
+    found.sort(key=lambda t: t[0])
 
     roots = []
-    for i in range(len(grid) - 1):
-        a, b = grid[i], grid[i + 1]
-        fa, fb = vals[i], vals[i + 1]
-
-        if fa == 0.0:
-            root = a
-        elif fa * fb > 0.0:
-            continue
-        else:
-            root = brentq(
-                lambda x: sun_altitude(x, lst, lat, eps)[0] - target_alt,
-                a, b, xtol=1e-12, rtol=1e-12,
-            )
-
+    for _, root in found:
         root %= 2.0 * np.pi
         if not roots or min(abs(wrap_pi(root - r)) for r in roots) > 1e-7:
             roots.append(root)
@@ -334,7 +370,8 @@ def pick_root_day(roots, lst, lat, eps, morning: bool):
     return 1.0 + (lam / (2.0 * np.pi)) * TROPICAL_YEAR_D
 
 
-def horizon_events(ra: float, dec: float, lat: float, eps: float, av_deg: float):
+def horizon_events(ra: float, dec: float, lat: float, eps: float, av_deg: float,
+                    sun_ra_i: np.ndarray, sun_dec_i: np.ndarray):
     vis = visibility_class(dec, lat)
     if vis != "VISIBILE":
         return vis, np.nan, np.nan, np.nan, np.nan
@@ -343,16 +380,16 @@ def horizon_events(ra: float, dec: float, lat: float, eps: float, av_deg: float)
     if not -1.0 <= cos_h0 <= 1.0:
         return vis, np.nan, np.nan, np.nan, np.nan
 
-    h0 = math.acos(np.clip(cos_h0, -1.0, 1.0))
+    h0 = math.acos(min(1.0, max(-1.0, cos_h0)))
     lst_rise = (ra - h0) % (2.0 * np.pi)
     lst_set = (ra + h0) % (2.0 * np.pi)
 
     av = math.radians(av_deg)
 
-    hr_roots = roots_over_solar_longitude(lst_rise, lat, eps, -av)
-    hs_roots = roots_over_solar_longitude(lst_set, lat, eps, -av)
-    ar_roots = roots_over_solar_longitude(lst_rise, lat, eps, 0.0)
-    aset_roots = roots_over_solar_longitude(lst_set, lat, eps, 0.0)
+    hr_roots = roots_over_solar_longitude(lst_rise, lat, eps, -av, sun_ra_i, sun_dec_i)
+    hs_roots = roots_over_solar_longitude(lst_set, lat, eps, -av, sun_ra_i, sun_dec_i)
+    ar_roots = roots_over_solar_longitude(lst_rise, lat, eps, 0.0, sun_ra_i, sun_dec_i)
+    aset_roots = roots_over_solar_longitude(lst_set, lat, eps, 0.0, sun_ra_i, sun_dec_i)
 
     heliacal_rising = pick_root_day(hr_roots, lst_rise, lat, eps, morning=True)
     heliacal_setting = pick_root_day(hs_roots, lst_set, lat, eps, morning=False)
@@ -362,13 +399,16 @@ def horizon_events(ra: float, dec: float, lat: float, eps: float, av_deg: float)
     return vis, heliacal_rising, heliacal_setting, acronychal_rising, acronychal_setting
 
 
-def init_worker(times_kyr, epj, r_true, eps_true, lat_deg, av_a, av_b, outdir):
+def init_worker(times_kyr, epj, r_true, eps_true, sun_ra_grid, sun_dec_grid,
+                 lat_deg, av_a, av_b, outdir):
     global _CTX
     _CTX = {
         "times_kyr": times_kyr,
         "epj": epj,
         "r_true": r_true,
         "eps_true": eps_true,
+        "sun_ra_grid": sun_ra_grid,
+        "sun_dec_grid": sun_dec_grid,
         "lat": math.radians(lat_deg),
         "av_a": av_a,
         "av_b": av_b,
@@ -381,6 +421,8 @@ def process_star(record: dict):
     epj = _CTX["epj"]
     r_true = _CTX["r_true"]
     eps_true = _CTX["eps_true"]
+    sun_ra_grid = _CTX["sun_ra_grid"]
+    sun_dec_grid = _CTX["sun_dec_grid"]
     lat = _CTX["lat"]
     av_a = _CTX["av_a"]
     av_b = _CTX["av_b"]
@@ -458,6 +500,8 @@ def process_star(record: dict):
             lat,
             float(eps_true[i]),
             float(av[i]),
+            sun_ra_grid[i],
+            sun_dec_grid[i],
         )
 
     out = pd.DataFrame(
@@ -509,6 +553,7 @@ def main():
     epj, r_true, eps_true = precompute_earth_orientation(
         times, use_nutation=not args.no_nutation
     )
+    sun_ra_grid, sun_dec_grid = precompute_sun_grid(eps_true)
 
     records = df.to_dict("records")
     workers = max(1, int(args.workers))
@@ -524,7 +569,7 @@ def main():
         max_workers=workers,
         initializer=init_worker,
         initargs=(
-            times, epj, r_true, eps_true, args.lat,
+            times, epj, r_true, eps_true, sun_ra_grid, sun_dec_grid, args.lat,
             args.av_a, args.av_b, str(outdir),
         ),
     ) as pool:
