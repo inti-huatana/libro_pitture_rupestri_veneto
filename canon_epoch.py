@@ -63,6 +63,10 @@ import matplotlib.pyplot as plt
 # made every earlier version of this analysis unstable.
 H_CRIT = 5.0
 
+# Mean obliquity, degrees. Sets how far precession can carry a declination, and
+# so which stars are beyond reach from a given latitude at every epoch.
+OBLIQUITY_DEG = 23.4
+
 # Tolerated unusable stars, guarding the interval against a misattributed
 # identifier in the source reconstruction.
 LEVELS = (0, 1, 2, 3)
@@ -122,6 +126,38 @@ def interval_at_level(n_unusable: np.ndarray, epochs: np.ndarray, level: int):
     }
 
 
+def plot_band(culture, epochs, lat_grid, n_unusable, lat_nom, present_epoch,
+              path: Path) -> None:
+    """Unusable count over the latitude band, with the nominal latitude marked.
+
+    Drawn as a map rather than reduced to its best cell: the band measures how
+    robust the window at the nominal latitude is, it does not replace it.
+    """
+    fig, ax = plt.subplots(figsize=(11, 6))
+    mesh = ax.pcolormesh(epochs, lat_grid, np.clip(n_unusable, 0, 20).T,
+                         cmap="inferno_r", shading="auto", vmin=0, vmax=20)
+    fig.colorbar(mesh, ax=ax, label=f"stelle sotto {H_CRIT:.0f}°")
+
+    levels = [l for l in LEVELS
+              if (n_unusable <= l).any() and (n_unusable > l).any()]
+    if levels:
+        cs = ax.contour(epochs, lat_grid, n_unusable.T,
+                        levels=[l + 0.5 for l in levels],
+                        colors="cyan", linewidths=1.2)
+        ax.clabel(cs, fmt={l + 0.5: str(l) for l in levels}, fontsize=7)
+
+    ax.axhline(lat_nom, color="lime", lw=1.6, ls="--",
+               label=f"latitudine nominale {lat_nom:+.1f}°")
+    ax.axvline(present_epoch, color="white", lw=1.0, ls=":", label="presente")
+    ax.set_xlabel("Epoca [kyr dall'anno 0]")
+    ax.set_ylabel("Latitudine dell'osservatore [°]")
+    ax.set_title(f"{culture} — stelle inutilizzabili su banda di latitudine")
+    ax.legend(loc="upper right", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_series(culture, epochs, n_unusable, h_low, lat, present_epoch,
                 path: Path) -> None:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
@@ -169,10 +205,16 @@ def main() -> None:
                    help="epoch taken as the present, kyr from year 0")
     p.add_argument("--min-stars", type=int, default=10,
                    help="skip cultures with fewer catalogued stars")
+    p.add_argument("--lat-halfwidth", type=float, default=20.0,
+                   help="half-width of the latitude band scanned around the "
+                        "nominal value, degrees")
+    p.add_argument("--lat-step", type=float, default=1.0,
+                   help="latitude step inside the band, degrees")
     args = p.parse_args()
 
     outdir = Path(args.outdir)
     (outdir / "series").mkdir(parents=True, exist_ok=True)
+    (outdir / "maps").mkdir(parents=True, exist_ok=True)
 
     latitudes = dict(DEFAULT_LATITUDES)
     if args.latitudes:
@@ -183,7 +225,7 @@ def main() -> None:
     log(f"Reading {args.trajectories} ...")
     traj = pd.read_csv(args.trajectories,
                        usecols=["epoch_kyr_from_year0", "HIP", "dec_deg",
-                                "Bayer", "NAME"])
+                                "ecl_lat_deg", "Bayer", "NAME"])
     traj = traj.rename(columns={"epoch_kyr_from_year0": "epoch"})
     traj["epoch"] = traj["epoch"].round(6)
     log(f"  {len(traj):,} rows, {traj['HIP'].nunique()} stars")
@@ -214,6 +256,14 @@ def main() -> None:
     dec_all = wide.to_numpy(dtype=float)
     log(f"Epochs: {epochs.size} from {epochs.min():+.1f} to {epochs.max():+.1f} kyr")
 
+    # Ecliptic latitude is very nearly invariant under precession, so one value
+    # per star suffices. It tells whether a permanently unusable star sits near
+    # the south ecliptic pole, which is where the constellations instituted by
+    # Keyser and de Houtman in 1598 and by Lacaille in the 1750s live, and so
+    # whether its presence in an ancient canon is a modern contamination.
+    ecl = traj.pivot(index="epoch", columns="HIP",
+                     values="ecl_lat_deg").sort_index().to_numpy(dtype=float)
+
     present_epoch = float(epochs[np.argmin(np.abs(epochs - args.present_kyr))])
     i_present = int(np.argmin(np.abs(epochs - present_epoch)))
     log(f"Present taken as epoch {present_epoch:+.1f} kyr | criterio {H_CRIT:.0f}°")
@@ -225,6 +275,7 @@ def main() -> None:
     log("")
 
     rows = []
+    never_rows = []
     for culture in cultures:
         lat = latitudes.get(culture)
         if lat is None:
@@ -257,6 +308,47 @@ def main() -> None:
         plot_series(culture, epochs, n_unusable, h_low, lat, present_epoch,
                     outdir / "series" / f"{culture}.pdf")
 
+        # Stars that never clear the criterion at the nominal latitude, at any
+        # epoch scanned. Their highest culmination and their ecliptic latitude
+        # are what distinguish a misattributed identifier from a whole southern
+        # block that no northern observer could ever have seen.
+        h_max_star = h.max(axis=0)
+        never = np.flatnonzero(h_max_star <= H_CRIT)
+        for s in never:
+            never_rows.append({
+                "culture": culture,
+                "lat_deg": lat,
+                "HIP": int(hips_here[s]),
+                "star": labels.get(hips_here[s], f"HIP {int(hips_here[s])}"),
+                "ecl_lat_deg": float(ecl[i_present, mask][s]),
+                "max_h_deg": float(h_max_star[s]),
+                "epoch_of_max_kyr": float(epochs[int(np.argmax(h[:, s]))]),
+            })
+
+        # Latitude band: the same count over a window around the nominal value.
+        # It separates a wrong latitude, where a nearby one opens a window, from
+        # a contaminated reconstruction, where none does.
+        lat_grid = np.arange(lat - args.lat_halfwidth,
+                             lat + args.lat_halfwidth + 1e-9, args.lat_step)
+        n_band = np.empty((epochs.size, lat_grid.size), dtype=np.int32)
+        for j, phi in enumerate(lat_grid):
+            n_band[:, j] = (90.0 - np.abs(phi - dec_all[:, mask])
+                            <= H_CRIT).sum(axis=1)
+
+        pd.DataFrame({
+            "epoch_kyr": np.repeat(epochs, lat_grid.size),
+            "lat_deg": np.tile(lat_grid, epochs.size),
+            "n_unusable": n_band.ravel(),
+        }).to_csv(outdir / "maps" / f"{culture}.csv", index=False,
+                  float_format="%.3f")
+        plot_band(culture, epochs, lat_grid, n_band, lat, present_epoch,
+                  outdir / "maps" / f"{culture}.pdf")
+
+        band_min = int(n_band.min())
+        has_window = (n_band == 0).any(axis=0)
+        lat_ok = lat_grid[has_window]
+        bj = int(np.argmin(n_band.min(axis=0)))
+
         row = {
             "culture": culture,
             "lat_deg": lat,
@@ -271,6 +363,14 @@ def main() -> None:
             # inside the interval the canon sat most comfortably, not as a date.
             "epoch_max_margin_kyr": float(epochs[int(np.argmax(h_low))]),
             "max_h_low_deg": float(h_low.max()),
+            "n_never_usable": int(never.size),
+            # Band diagnostics.
+            "band_min_unusable": band_min,
+            "band_lat_best_deg": float(lat_grid[bj]),
+            "band_lat_window_lo": float(lat_ok.min()) if lat_ok.size else np.nan,
+            "band_lat_window_hi": float(lat_ok.max()) if lat_ok.size else np.nan,
+            "band_lat_window_width": (float(lat_ok.max() - lat_ok.min())
+                                      if lat_ok.size else 0.0),
         }
 
         for level in LEVELS:
@@ -278,14 +378,24 @@ def main() -> None:
             pre = f"lev{level}"
             if iv is None:
                 row.update({f"{pre}_lo": np.nan, f"{pre}_hi": np.nan,
+                            f"{pre}_width_kyr": np.nan,
                             f"{pre}_n": 0, f"{pre}_contiguous": True,
+                            f"{pre}_at_scan_edge": False,
                             f"{pre}_present_inside": False,
                             f"{pre}_excludes_present": False})
             else:
                 inside = bool(n_unusable[i_present] <= level)
+                # The width is what separates a date from a truism: a window of
+                # one millennium places a canon, one of twenty-seven merely
+                # rules out the last few centuries.
+                width = iv["epoch_hi"] - iv["epoch_lo"]
+                at_edge = bool(iv["epoch_lo"] <= epochs[0] + 1e-9
+                               or iv["epoch_hi"] >= epochs[-1] - 1e-9)
                 row.update({f"{pre}_lo": iv["epoch_lo"], f"{pre}_hi": iv["epoch_hi"],
+                            f"{pre}_width_kyr": width,
                             f"{pre}_n": iv["n_epochs"],
                             f"{pre}_contiguous": iv["contiguous"],
+                            f"{pre}_at_scan_edge": at_edge,
                             f"{pre}_present_inside": inside,
                             # The configuration a modern reconstruction cannot
                             # have produced: admissible in the past, not now.
@@ -306,15 +416,22 @@ def main() -> None:
         rows.append(row)
 
         if iv0 is None:
-            verdict = f"mai interamente usabile (min {int(n_unusable.min())})"
-        elif row["lev0_present_inside"]:
-            verdict = (f"usabile [{iv0['epoch_lo']:+.1f}, {iv0['epoch_hi']:+.1f}] kyr, "
-                       f"presente incluso")
+            verdict = (f"mai usabile (min {int(n_unusable.min())}, "
+                       f"{int(never.size)} stelle mai sopra il criterio)")
         else:
-            verdict = (f"usabile [{iv0['epoch_lo']:+.1f}, {iv0['epoch_hi']:+.1f}] kyr, "
-                       f"PRESENTE ESCLUSO")
-        log(f"  {culture:28s} {n_canon:4d} st | lat {lat:+5.1f}° | "
-            f"inutilizzabili oggi {row['n_unusable_now']:3d} | {verdict}")
+            w = iv0["epoch_hi"] - iv0["epoch_lo"]
+            edge = "*" if row["lev0_at_scan_edge"] else " "
+            gap = "" if row["lev0_contiguous"] else " CON BUCO"
+            state = ("presente incluso" if row["lev0_present_inside"]
+                     else "PRESENTE ESCLUSO")
+            verdict = (f"ampiezza {w:5.1f} kyr{edge} "
+                       f"[{iv0['epoch_lo']:+6.1f},{iv0['epoch_hi']:+6.1f}] "
+                       f"{state}{gap}")
+        log(f"  {culture:28s} {n_canon:4d} st | oggi {row['n_unusable_now']:3d} "
+            f"inut. | {verdict}")
+        if iv0 is not None and not row["lev0_present_inside"]:
+            log(f"  {'':28s}      chiude: {row['binding_star_hi']}  |  "
+                f"apre: {row['binding_star_lo']}")
 
     if not rows:
         raise SystemExit("No culture could be analysed.")
@@ -330,13 +447,34 @@ def main() -> None:
         f"{int(out['lev3_excludes_present'].sum())}")
     log(f"  mai interamente usabile: {int((out['lev3_n'] == 0).sum())}")
 
+    if never_rows:
+        nv = pd.DataFrame(never_rows).sort_values(["culture", "ecl_lat_deg"])
+        nv.to_csv(outdir / "never_usable.csv", index=False, float_format="%.2f")
+        log(f"  {outdir}/never_usable.csv  ({len(nv)} stelle in "
+            f"{nv['culture'].nunique()} culture)")
+        # Precession carries a star's declination up to sin(beta + eps), so it
+        # never clears the criterion from latitude phi, at any epoch, once
+        #     beta < phi - 90 + H_CRIT - eps
+        # Such a star cannot belong to that canon under any choice of epoch, and
+        # near the south ecliptic pole it cannot under any northern latitude
+        # either: that region holds the constellations instituted after 1598.
+        nv["never_at_any_epoch_below_ecl_lat"] = (
+            nv["lat_deg"] - 90.0 + H_CRIT - OBLIQUITY_DEG)
+        deep = nv[nv["ecl_lat_deg"] < nv["never_at_any_epoch_below_ecl_lat"]]
+        log(f"    di cui sotto la soglia di inaccessibilita' permanente "
+            f"(beta < lat - 90 + {H_CRIT:.0f} - {OBLIQUITY_DEG:.1f}): {len(deep)}")
+
+    log("")
+    log("  Canoni la cui finestra esclude il presente, per ampiezza crescente")
+    log("  (ampiezza piccola = datazione stretta; * = bordo sullo scan):")
     strict = out[out["lev0_excludes_present"] & (out["lev0_n"] > 0)]
-    if not strict.empty:
-        log("")
-        log("  Canoni la cui finestra esclude il presente:")
-        for _, r in strict.sort_values("lev0_hi").iterrows():
-            log(f"    {r['culture']:26s} [{r['lev0_lo']:+6.1f}, {r['lev0_hi']:+6.1f}] kyr "
-                f"| chiude: {r['binding_star_hi']}")
+    if strict.empty:
+        log("    nessuno")
+    for _, r in strict.sort_values("lev0_width_kyr").iterrows():
+        edge = "*" if r["lev0_at_scan_edge"] else " "
+        log(f"    {r['culture']:26s} {r['lev0_width_kyr']:6.1f} kyr{edge} "
+            f"[{r['lev0_lo']:+6.1f},{r['lev0_hi']:+6.1f}] | "
+            f"apre {str(r['binding_star_lo'])[:14]:14s} chiude {r['binding_star_hi']}")
 
 
 if __name__ == "__main__":
