@@ -49,6 +49,23 @@ measures how much of a cutoff there is at all. Because h_min is a threshold
 parameter the usual chi-square calibration of that ratio does not hold, so it is
 reported descriptively and a permutation test is available with --permutations.
 
+Only p_above > p_below is admitted, because a horizon can only suppress. Without
+that ordering the likelihood also rewards the reverse arrangement, in which the
+canon crowds towards the horizon and everything else stands high: since
+h = 90 - |phi - d| is symmetric under reflection, every genuine solution has a
+mirror at a latitude that turns it upside down, and placing a northern canon far
+enough south produces exactly that. Those mirrors are strong fits to a
+physically empty pattern, and the ordering constraint is what removes them.
+
+Two things stay entangled even so. The southern edge of a canon constrains only
+phi - h_min; the northern edge would constrain phi + h_min and separate them,
+but a culture whose canon reaches the celestial pole has no northern edge, so
+latitude and practical horizon slide along one another. The summary therefore
+reports phi_minus_hmin as the combination the data actually fix, and h_min is
+bounded above at a value taken from atmospheric extinction -- roughly 0.8 mag at
+15 degrees of altitude and negligible higher -- rather than left free to absorb
+the degeneracy.
+
 Profiling the likelihood over h_min at every (phi, epoch) yields a surface whose
 maximum locates the observing latitude and the epoch jointly, and whose
 2*Delta-logL contours delimit a confidence region. Precession sweeps
@@ -199,6 +216,15 @@ def profile_cutoff(h: np.ndarray, in_canon: np.ndarray, hmin_grid: np.ndarray):
     without re-scanning the stars. Returns the maximised log-likelihood, the
     cutoff attaining it, the four counts there, and the log-likelihood of the
     null in which membership does not depend on altitude at all.
+
+    Only cutoffs with p_above > p_below are admitted. A horizon makes stars
+    below it *less* likely to be named, and an unsigned likelihood is happy to
+    certify the reverse: placing a northern canon at a far southern latitude
+    drives all of its stars towards the horizon while the rest of the catalogue
+    stays high, which is a strong anti-correlation and would otherwise score as
+    a strong fit. That is the mirror solution created by h = 90 - |phi - d|
+    being symmetric under reflection, and it has no physical meaning. When no
+    cutoff satisfies the ordering the cell simply falls back on the null.
     """
     order = np.argsort(h, kind="stable")
     hs = h[order]
@@ -207,6 +233,7 @@ def profile_cutoff(h: np.ndarray, in_canon: np.ndarray, hmin_grid: np.ndarray):
     cum_in = np.concatenate(([0], np.cumsum(ins)))
     n = h.size
     total_in = int(cum_in[-1])
+    ll_null = float(binom_loglik(total_in, n))
 
     # Number of catalogue stars strictly below each candidate cutoff.
     idx = np.searchsorted(hs, hmin_grid, side="left")
@@ -216,10 +243,19 @@ def profile_cutoff(h: np.ndarray, in_canon: np.ndarray, hmin_grid: np.ndarray):
     A = float(total_in) - B                # canon stars at or above
     C = (n - idx).astype(float) - A        # other stars at or above
 
-    ll = binom_loglik(A, A + C) + binom_loglik(B, B + D)
-    j = int(np.argmax(ll))
+    above = A + C
+    below = B + D
+    with np.errstate(divide="ignore", invalid="ignore"):
+        p_above = np.where(above > 0, A / np.where(above > 0, above, 1.0), np.nan)
+        p_below = np.where(below > 0, B / np.where(below > 0, below, 1.0), np.nan)
 
-    ll_null = float(binom_loglik(total_in, n))
+    ll = binom_loglik(A, above) + binom_loglik(B, below)
+    ok = np.isfinite(p_above) & np.isfinite(p_below) & (p_above > p_below)
+    if not ok.any():
+        return ll_null, np.nan, float(total_in), 0.0, float(n - total_in), 0.0, ll_null
+
+    ll = np.where(ok, ll, -np.inf)
+    j = int(np.argmax(ll))
     return (float(ll[j]), float(hmin_grid[j]),
             float(A[j]), float(B[j]), float(C[j]), float(D[j]), ll_null)
 
@@ -343,8 +379,14 @@ def main() -> None:
     p.add_argument("--Tmax", type=float, default=2.0, help="latest epoch, kyr")
     p.add_argument("--epoch-step", type=float, default=0.2, help="epoch step, kyr")
     p.add_argument("--lat-step", type=float, default=1.0, help="latitude step, deg")
-    p.add_argument("--hmin-max", type=float, default=30.0,
-                   help="upper bound of the fitted practical horizon, deg")
+    p.add_argument("--lat-min", type=float, default=-55.0,
+                   help="southernmost observer latitude scanned, deg")
+    p.add_argument("--lat-max", type=float, default=70.0,
+                   help="northernmost observer latitude scanned, deg")
+    p.add_argument("--hmin-max", type=float, default=15.0,
+                   help="upper bound of the fitted practical horizon, deg; set "
+                        "from atmospheric extinction, which is about 0.8 mag at "
+                        "15 deg altitude and negligible above it")
     p.add_argument("--hmin-step", type=float, default=0.5,
                    help="resolution of the fitted practical horizon, deg")
     p.add_argument("--present-kyr", type=float, default=2.0,
@@ -389,10 +431,13 @@ def main() -> None:
     dec_all = wide.to_numpy(dtype=float)
     log(f"Epochs: {epochs.size} from {epochs.min():+.1f} to {epochs.max():+.1f} kyr")
 
-    lat_grid = np.arange(-90.0, 90.0 + 1e-9, args.lat_step)
+    # Latitudes are limited to the inhabited range: outside it the fit has no
+    # subject, and the far south in particular is where the mirror solutions of
+    # a northern canon used to pile up.
+    lat_grid = np.arange(args.lat_min, args.lat_max + 1e-9, args.lat_step)
     hmin_grid = np.arange(0.0, args.hmin_max + 1e-9, args.hmin_step)
-    log(f"Latitudes: {lat_grid.size} | cutoff grid: {hmin_grid.size} "
-        f"(0 .. {args.hmin_max:.0f}°)")
+    log(f"Latitudes: {lat_grid.size} from {lat_grid[0]:+.0f} to {lat_grid[-1]:+.0f} "
+        f"| cutoff grid: {hmin_grid.size} (0 .. {args.hmin_max:.0f}°)")
 
     present_epoch = float(epochs[np.argmin(np.abs(epochs - args.present_kyr))])
     i_present = int(np.argmin(np.abs(epochs - present_epoch)))
@@ -450,9 +495,16 @@ def main() -> None:
             "best_epoch_year": best["epoch"] * 1000.0,
             "best_latitude_deg": best["lat"],
             "fitted_h_min_deg": float(hmin[bi, bj]),
+            # The southern edge of the canon constrains only phi - h_min: a
+            # northern culture reaching the celestial pole gives no northern
+            # edge to break the degeneracy, so the two are traded off along this
+            # combination and it, not the latitude alone, is what the data fix.
+            "phi_minus_hmin_deg": best["lat"] - float(hmin[bi, bj]),
             "n_canon_above": A, "n_canon_below": B,
             "p_above": A / (A + C) if (A + C) > 0 else np.nan,
             "p_below": B / (B + D) if (B + D) > 0 else np.nan,
+            "contrast": ((A / (A + C) if (A + C) > 0 else np.nan)
+                         - (B / (B + D) if (B + D) > 0 else np.nan)),
             "lr_cutoff": lr_cutoff,
             "lat_lo95_deg": lat_lo, "lat_hi95_deg": lat_hi,
             "epoch_lo95_kyr": ep_lo, "epoch_hi95_kyr": ep_hi,
@@ -516,10 +568,19 @@ def main() -> None:
     log(f"Written {outdir}/summary.csv  ({len(out)} cultures)")
     log(f"  informative (presente escluso alla latitudine nota): "
         f"{int(out['informative'].sum())}")
+    log(f"  senza taglio ammissibile (nessun p_sopra > p_sotto): "
+        f"{int(out['fitted_h_min_deg'].isna().sum())}")
     log(f"  orizzonte pratico stimato: mediana "
         f"{np.nanmedian(out['fitted_h_min_deg']):.1f}°, "
         f"intervallo [{np.nanmin(out['fitted_h_min_deg']):.1f}, "
         f"{np.nanmax(out['fitted_h_min_deg']):.1f}]°")
+    # h_min pinned at its bound would mean the degeneracy is still being
+    # absorbed there rather than the horizon being measured.
+    n_rail = int((out["fitted_h_min_deg"] >= args.hmin_max - 1e-9).sum())
+    if n_rail:
+        log(f"  ATTENZIONE: {n_rail} culture con h_min al limite "
+            f"({args.hmin_max:.0f}°): latitudine e orizzonte restano degeneri, "
+            f"usare phi_minus_hmin")
 
 
 if __name__ == "__main__":
