@@ -21,17 +21,22 @@ at every epoch and divided by their values at the reference epoch. Internal
 separations are invariant under precession, which is a rotation of the whole
 frame, so what is left is proper motion alone.
 
-Two numbers come out of the ratios, kept apart because they mean different
+Three numbers come out of the ratios, kept apart because they mean different
 things:
 
     scale       their median. A group receding or approaching shrinks or grows
                 as a whole without changing shape, and for a bound cluster this
                 is nearly all of the effect.
 
-    distortion  the RMS spread of the ratios about that median, in per cent.
-                This is shape change proper: the figure ceasing to be the same
-                figure. A few per cent is imperceptible, a few tens of per cent
-                is a different pattern.
+    total       the RMS relative change of the separations, scale included: the
+                whole alteration of the pattern. For a two-star figure it is all
+                there is, which is why the shape measure alone cannot decide
+                whether a figure is worth keeping.
+
+    distortion  the RMS spread of the ratios about the median, in per cent: the
+                part no rescaling can undo. A few per cent is imperceptible, a
+                few tens of per cent is a different pattern. Identically zero
+                for a pair, a single separation being its own median.
 
 Which star is responsible is found by leaving each one out in turn and taking
 the one whose absence most reduces the distortion. What governs it is proper
@@ -135,18 +140,31 @@ def separations(ra_deg: np.ndarray, dec_deg: np.ndarray, ia, ib) -> np.ndarray:
 
 
 def shape_series(sep: np.ndarray, i_ref: int):
-    """Scale factor and shape distortion per epoch, from pairwise separations.
+    """Scale, total change and shape distortion per epoch, from separations.
 
-    The median ratio is removed before measuring the spread because a uniform
-    expansion leaves a figure the same figure; what is reported as distortion is
-    only the part that cannot be undone by rescaling.
+    Three numbers, because two stars would otherwise fall through the cracks.
+
+        scale       median of the ratios: the figure as a whole growing or
+                    shrinking
+
+        total       RMS relative change of the separations, scale included.
+                    This is the whole alteration, and for a pair it is the only
+                    thing there is: two stars three degrees apart that end up
+                    fifteen degrees apart are not the same figure enlarged, they
+                    are a different sky.
+
+        distortion  RMS spread of the ratios about their median: the part that
+                    no rescaling can undo. Identically zero for a pair, since a
+                    single separation is its own median, which is why the shape
+                    measure alone cannot be the criterion for keeping a figure.
     """
     ref = sep[i_ref]
     good = ref > 1e-9
     ratio = sep[:, good] / ref[good]
     scale = np.median(ratio, axis=1)
+    total = 100.0 * np.sqrt(np.mean((ratio - 1.0) ** 2, axis=1))
     resid = ratio / scale[:, None] - 1.0
-    return scale, 100.0 * np.sqrt(np.mean(resid ** 2, axis=1))
+    return scale, total, 100.0 * np.sqrt(np.mean(resid ** 2, axis=1))
 
 
 def crossing_epoch(epochs: np.ndarray, dist: np.ndarray, level: float,
@@ -165,13 +183,13 @@ def worst_star(ra, dec, idx, i_ref, i_far):
         return None, np.nan
     base_pairs = np.triu_indices(idx.size, k=1)
     base = shape_series(separations(ra, dec, idx[base_pairs[0]],
-                                    idx[base_pairs[1]]), i_ref)[1][i_far]
+                                    idx[base_pairs[1]]), i_ref)[2][i_far]
     best, best_drop = None, -np.inf
     for s in range(idx.size):
         keep = np.delete(np.arange(idx.size), s)
         sub = idx[keep]
         ia, ib = np.triu_indices(sub.size, k=1)
-        d = shape_series(separations(ra, dec, sub[ia], sub[ib]), i_ref)[1][i_far]
+        d = shape_series(separations(ra, dec, sub[ia], sub[ib]), i_ref)[2][i_far]
         if base - d > best_drop:
             best_drop, best = base - d, s
     return best, best_drop
@@ -201,20 +219,25 @@ def project(ra_deg: np.ndarray, dec_deg: np.ndarray):
     return np.column_stack((np.degrees(v @ east), np.degrees(v @ north)))
 
 
-def procrustes(P: np.ndarray, Q: np.ndarray) -> np.ndarray:
-    """Bring P onto Q by translation, rotation and uniform scale.
+def procrustes(P: np.ndarray, Q: np.ndarray, fit_scale: bool = False) -> np.ndarray:
+    """Bring P onto Q by translation and rotation, and by scale if asked.
 
-    The distortion measured elsewhere in this program is what survives removing
-    the median scale, so the drawings remove scale too, and rotation with it:
-    otherwise precession would spin every panel and hide the only thing worth
-    looking at. Reflection is excluded, a mirrored figure being a different
-    figure.
+    Rotation goes because precession spins the whole frame and would make every
+    panel turn, hiding the only thing worth looking at. Reflection stays,
+    excluded, a mirrored figure being a different figure.
+
+    Scale does not go, by default. Removing it would leave a pair of stars
+    looking identical in every panel however far apart they had drifted, and
+    growth is a real alteration of the pattern rather than an artefact to be
+    normalised away. The panels share axes, so it shows.
     """
     Pc = P - P.mean(axis=0)
     Qc = Q - Q.mean(axis=0)
     U, S, Vt = np.linalg.svd(Pc.T @ Qc)
     d = np.sign(np.linalg.det(U @ Vt))
     R = U @ np.diag([1.0, d]) @ Vt
+    if not fit_scale:
+        return Pc @ R
     denom = float((Pc ** 2).sum())
     s = (S[0] + d * S[1]) / denom if denom > 0 else 1.0
     return s * (Pc @ R)
@@ -291,9 +314,13 @@ def main() -> None:
     p.add_argument("--outdir", default="drift")
     p.add_argument("--ref-kyr", type=float, default=0.0,
                    help="reference epoch the shapes are compared against")
-    p.add_argument("--min-stars", type=int, default=4,
-                   help="skip figures with fewer catalogued stars; three stars "
-                        "give only three separations and no leave-one-out")
+    p.add_argument("--min-stars", type=int, default=2,
+                   help="skip figures with fewer catalogued stars. Two is the "
+                        "floor: a pair has one separation, so no shape "
+                        "distortion, but its total change is real and is the "
+                        "whole of what happened to it. Shape needs three, the "
+                        "leave-one-out four; both are skipped below that "
+                        "instead of dropping the figure.")
     p.add_argument("--panel-step", type=float, default=10.0,
                    help="spacing between drawn panels, kyr")
     p.add_argument("--panels-per-page", type=int, default=4)
@@ -368,19 +395,31 @@ def main() -> None:
     log("")
 
     rows = []
+    skipped = []
     for cid, grp in sub.groupby("constellation_id"):
         hips = np.sort(grp["HIP"].unique())
         idx = np.flatnonzero(np.isin(all_hips, hips))
         if idx.size < args.min_stars:
+            # Recorded rather than dropped in silence: which figures fall out,
+            # and with how many stars, is what says whether the cut is the
+            # threshold's fault or the catalogue's.
+            skipped.append({
+                "culture": args.culture,
+                "constellation_id": cid,
+                "name": names.get(cid, cid),
+                "n_stars_catalogue": int(idx.size),
+                "n_stars_figure": int(len(hips)),
+            })
             continue
 
         ia, ib = np.triu_indices(idx.size, k=1)
         sep = separations(ra, dec, idx[ia], idx[ib])
-        scale, dist = shape_series(sep, i_ref)
+        scale, total, dist = shape_series(sep, i_ref)
 
         pd.DataFrame({
             "epoch_kyr": epochs,
             "scale": scale,
+            "total_change_pct": total,
             "distortion_pct": dist,
             "mean_sep_deg": sep.mean(axis=1),
         }).to_csv(outdir / "curves" / f"{cid.replace(' ', '_')}.csv",
@@ -412,6 +451,7 @@ def main() -> None:
             "mean_sep_ref_deg": float(sep[i_ref].mean()),
             "nearest_pc": float(np.nanmin(dpc[i_ref, idx])),
             "median_pc": float(np.nanmedian(dpc[i_ref, idx])),
+            "total_change_far_pct": float(total[i_far]),
             "distortion_far_pct": float(dist[i_far]),
             "scale_far": float(scale[i_far]),
             "driver_star": driver,
@@ -425,17 +465,33 @@ def main() -> None:
     if not rows:
         raise SystemExit("No figure had enough catalogued stars.")
 
-    out = pd.DataFrame(rows).sort_values("distortion_far_pct")
+    out = pd.DataFrame(rows).sort_values("total_change_far_pct")
     out.to_csv(outdir / "summary.csv", index=False)
 
+    if skipped:
+        sk = pd.DataFrame(skipped).sort_values(
+            ["n_stars_catalogue", "name"], ascending=[False, True])
+        sk.to_csv(outdir / "skipped.csv", index=False)
+        log("")
+        log(f"  Figure escluse: {len(sk)} su "
+            f"{len(sk) + len(out)}, per stelle insufficienti nel catalogo")
+        for n in sorted(sk["n_stars_catalogue"].unique(), reverse=True):
+            names_n = ", ".join(sk.loc[sk["n_stars_catalogue"] == n, "name"])
+            log(f"    con {n} stelle: {names_n}")
+        log(f"    Il limite e' la profondita' del catalogo, non la soglia: una")
+        log(f"    figura senza almeno tre stelle non ha una forma da misurare.")
+
     far = epochs[i_far]
-    log(f"  Deformazione a {far:+.0f} kyr, dalle piu' stabili alle piu' alterate:")
-    log(f"    {'costellazione':22s} {'n':>3s} {'defor.':>8s} {'piu vicina':>11s} "
-        f"{'responsabile':>16s} {'a pc':>7s}")
+    log(f"  Alterazione a {far:+.0f} kyr, dalle piu' stabili alle piu' alterate.")
+    log(f"  totale = cambiamento complessivo, scala inclusa; forma = cio' che")
+    log(f"  nessun riscalamento annulla, ed e' zero per una coppia.")
+    log(f"    {'costellazione':22s} {'n':>3s} {'totale':>8s} {'forma':>8s} "
+        f"{'scala':>6s} {'vicina':>7s} {'responsabile':>16s}")
     for _, r in out.iterrows():
+        drv = str(r['driver_star'])[:16] if str(r['driver_star']) else "-"
         log(f"    {str(r['name'])[:22]:22s} {r['n_stars']:3d} "
-            f"{r['distortion_far_pct']:7.1f}% {r['nearest_pc']:10.0f} "
-            f"{str(r['driver_star'])[:16]:>16s} {r['driver_distance_pc']:7.0f}")
+            f"{r['total_change_far_pct']:7.1f}% {r['distortion_far_pct']:7.1f}% "
+            f"{r['scale_far']:6.2f} {r['nearest_pc']:6.0f} {drv:>16s}")
 
     # The mechanism, stated as a number rather than an assertion: if the nearest
     # member governs the deformation, the two must track each other.
@@ -455,7 +511,7 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(9, max(6, 0.26 * len(out))))
     y = np.arange(len(out))
     col = plt.cm.viridis(np.clip(np.log10(out["nearest_pc"]) / 2.6, 0, 1))
-    ax.barh(y, out["distortion_far_pct"], color=col)
+    ax.barh(y, out["total_change_far_pct"], color=col)
     ax.set_yticks(y)
     ax.set_yticklabels(out["name"], fontsize=8)
     ax.invert_yaxis()
@@ -463,7 +519,7 @@ def main() -> None:
         ax.axvline(lv, color="k", lw=0.7, ls=":")
         ax.text(lv, -0.8, f"{lv:.0f}%", fontsize=7, ha="center")
     ax.set_xscale("log")
-    ax.set_xlabel(f"Deformazione di forma a {epochs[i_far]:+.0f} kyr [%]  "
+    ax.set_xlabel(f"Alterazione totale a {epochs[i_far]:+.0f} kyr [%]  "
                   f"(scala logaritmica)")
     ax.set_title(f"{args.culture} — quali figure reggono il moto proprio\n"
                  f"colore = distanza del membro piu' vicino "
