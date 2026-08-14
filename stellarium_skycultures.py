@@ -29,7 +29,25 @@ constellations  one row per constellation
                 n_stars, n_segments, is_single_star
 
 members         one row per (constellation, star): the join key for astronomy
-                culture, constellation_id, HIP
+                culture, constellation_id, HIP, source
+
+                Membership is drawn from all three places an index.json records
+                a star, because each is evidence the culture knew it:
+
+                  line    a vertex of a drawn constellation figure
+                  anchor  a star registering the figure's illustration onto the
+                          sky, so a star of that constellation by construction,
+                          though it defines no segment
+                  named   a star carrying a proper name of its own under
+                          `common_names`, whether or not any figure uses it.
+                          The strongest evidence there is, and independent of
+                          the figures: Sirius in the Inuit sky is Flickering and
+                          appears in no line at all.
+
+                Reading only the line vertices, as an earlier version did,
+                dropped Arcturus from the Leiden Aratea and Sirius from several
+                canons, and made them look like stars those cultures had failed
+                to notice.
 
 segments        one row per drawn line segment: this is what defines the shape
                 culture, constellation_id, seg_index, HIP_a, HIP_b
@@ -45,6 +63,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import datetime, UTC
 from pathlib import Path
 
@@ -124,6 +143,41 @@ def _polyline_segments(polyline) -> tuple[list[tuple[int, int]], list[int], int]
     return segments, members, skipped
 
 
+_HIP_KEY = re.compile(r"^HIP\s*(\d+)$", re.IGNORECASE)
+
+
+def _anchor_hips(entry: dict) -> list[int]:
+    """Hipparcos numbers anchoring a constellation's illustration.
+
+    An anchor registers the artwork onto the sky, so it is by construction a
+    star of that constellation, and evidence the culture knew it just as good as
+    a line vertex. It defines no drawn segment, though, so anchors join the
+    membership table and stay out of the segment table.
+    """
+    img = entry.get("image") or {}
+    out = []
+    for a in img.get("anchors") or []:
+        hip = a.get("hip")
+        if isinstance(hip, int) and not isinstance(hip, bool):
+            out.append(hip)
+    return out
+
+
+def _named_star_hips(data: dict) -> list[int]:
+    """Stars the culture gives a proper name of their own.
+
+    The strongest evidence of all, and independent of any figure: a star can
+    carry a name without belonging to a drawn constellation. Sirius in the Inuit
+    sky is Flickering and appears in no line at all.
+    """
+    out = []
+    for key in (data.get("common_names") or {}):
+        m = _HIP_KEY.match(str(key).strip())
+        if m:
+            out.append(int(m.group(1)))
+    return out
+
+
 def parse_index(path: Path, culture: str) -> dict | None:
     """Parse one index.json. Returns None if the file is unreadable."""
     try:
@@ -154,10 +208,12 @@ def parse_index(path: Path, culture: str) -> dict | None:
             star_set.extend(mem)
             skipped_total += skipped
 
-        uniq_stars = sorted(set(star_set))
+        anchors = _anchor_hips(entry)
+        line_stars = sorted(set(star_set))
+        uniq_stars = sorted(set(star_set) | set(anchors))
         # A constellation drawn as one star repeated has members but no segment;
         # this is how Stellarium marks an isolated named star.
-        is_single = len(uniq_stars) == 1 and not seg_pairs
+        is_single = len(line_stars) == 1 and not seg_pairs
 
         constellations.append({
             "culture": culture,
@@ -165,14 +221,27 @@ def parse_index(path: Path, culture: str) -> dict | None:
             "name_english": name_en,
             "name_native": name_nat,
             "n_stars": len(uniq_stars),
+            "n_line_stars": len(line_stars),
+            "n_anchor_only": len(set(anchors) - set(line_stars)),
             "n_segments": len(seg_pairs),
             "is_single_star": is_single,
         })
         for hip in uniq_stars:
-            members.append({"culture": culture, "constellation_id": cid, "HIP": hip})
+            members.append({
+                "culture": culture, "constellation_id": cid, "HIP": hip,
+                "source": "line" if hip in set(line_stars) else "anchor",
+            })
         for k, (a, b) in enumerate(seg_pairs):
             segments.append({"culture": culture, "constellation_id": cid,
                              "seg_index": k, "HIP_a": a, "HIP_b": b})
+
+    # Stars carrying a proper name of their own, whether or not any figure uses
+    # them. Attached to no constellation, so they take an empty identifier.
+    in_figures = {m["HIP"] for m in members}
+    named_only = sorted(set(_named_star_hips(data)) - in_figures)
+    for hip in named_only:
+        members.append({"culture": culture, "constellation_id": "",
+                        "HIP": hip, "source": "named"})
 
     all_stars = {m["HIP"] for m in members}
     culture_row = {
@@ -181,6 +250,13 @@ def parse_index(path: Path, culture: str) -> dict | None:
         "classification": ";".join(str(c) for c in classification),
         "n_constellations": len(constellations),
         "n_stars": len(all_stars),
+        "n_stars_lines_only": len({m["HIP"] for m in members
+                                   if m["source"] == "line"}),
+        "n_anchor_only": len({m["HIP"] for m in members
+                              if m["source"] == "anchor"} - {
+                                  m["HIP"] for m in members
+                                  if m["source"] == "line"}),
+        "n_named_only": len(named_only),
         "n_segments": len(segments),
         "n_skipped_refs": skipped_total,
     }
