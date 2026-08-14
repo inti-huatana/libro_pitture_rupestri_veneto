@@ -3,57 +3,72 @@
 constellation_visibility.py
 
 Constrain the observing latitude and the epoch of a sky culture from the
-requirement that every star it names was actually visible.
+requirement that every star it names was actually visible, estimating the
+practical horizon and the outlier rate from the data instead of assuming them.
 
 Supersedes the empty-zone approach of constellation_age.py, which inferred from
-an absence (no constellations near the south celestial pole) and therefore only
-worked for northern cultures. This one infers from a presence: a star belongs to
-the culture's canon, so somebody saw it, so it rose above the horizon. That is a
-physical constraint rather than a fit, and it is symmetric in the hemispheres,
-so it applies unchanged to Maori, Inuit or Babylonian material.
+an absence -- no constellations near the south celestial pole -- and therefore
+could not work for a southern culture at all. This one infers from a presence: a
+star belongs to the culture's canon, so somebody saw it, so it rose. That is a
+physical constraint rather than a fit to a hole, and it is symmetric in the
+hemispheres.
 
-Method
-------
-A star of declination d culminates at altitude 90 - |phi - d| for an observer at
-latitude phi. Requiring it to reach at least h_min gives |phi - d| <= 90 - h_min.
-Imposing that on the whole canon at epoch T bounds the latitude:
+The estimator
+-------------
+A star of declination d culminates at altitude h = 90 - |phi - d| for an observer
+at latitude phi. At a candidate (phi, epoch) every star of the bright-star
+catalogue therefore has a known h, and is either in the culture's canon or not.
 
-    d_max(T) - 90 + h_min  <=  phi  <=  d_min(T) + 90 - h_min
+A culture that observed from that latitude at that epoch should show a cutoff:
+above some altitude its stars enter the canon at some rate, below it they stop,
+because a star culminating a couple of degrees up carries two magnitudes of
+extinction and is useless for building a figure. That cutoff is the practical
+horizon. It is not assumed here, it is estimated, together with the rate at
+which stars leak in below it, which is what an outlier tolerance really is.
 
-so the admissible band is 180 - (declination span) - 2*h_min degrees wide: the
-constraint bites in proportion to how far in declination the canon reaches.
+Model: a catalogue star enters the canon with probability p_above when
+h >= h_min and p_below when h < h_min. Splitting the catalogue by canon
+membership and by the cutoff gives a 2x2 table
 
-h_min is the practical horizon. A star culminating two degrees up is not usable
-for building a figure -- some two magnitudes of atmospheric extinction, plus haze
-and relief -- so h_min is an explicit parameter here rather than a hidden bias,
-and every result is reported for several of its values.
+                    h >= h_min     h < h_min
+    in canon             A              B
+    not in canon         C              D
 
-Because the extremes d_min and d_max are order statistics, one misattributed
-star in a modern reconstruction would destroy the bound. The band is therefore
-also computed while tolerating k stars below the practical horizon, for several
-k: a result that moves a lot between k=0 and k=3 is driven by an outlier and
-should not be believed.
+whose log-likelihood is maximised in closed form by p_above = A/(A+C) and
+p_below = B/(B+D), so no numerical optimisation is needed and h_min can simply
+be scanned. Nothing is chosen by hand:
 
-Precession sweeps declinations by up to +/-23.4 degrees, so the band edges move
-substantially with epoch. Given a culture's latitude, which ethnography usually
-supplies, the latitude constraint inverts into a constraint on the epochs at
-which the canon could have been assembled. Its period is that of precession,
-25.8 kyr, so within the Holocene the solution is unique.
+    h_min     the practical horizon, fitted
+    B         how many canon stars sit below it, fitted, not a tolerance
+    p_below   the leak rate, the outlier fraction in its natural form
+
+A culture with a real horizon cutoff has p_below near zero and p_above well
+above it. A culture whose canon says nothing about visibility has p_below close
+to p_above; the likelihood ratio against that null, reported as `lr_cutoff`,
+measures how much of a cutoff there is at all. Because h_min is a threshold
+parameter the usual chi-square calibration of that ratio does not hold, so it is
+reported descriptively and a permutation test is available with --permutations.
+
+Profiling the likelihood over h_min at every (phi, epoch) yields a surface whose
+maximum locates the observing latitude and the epoch jointly, and whose
+2*Delta-logL contours delimit a confidence region. Precession sweeps
+declinations by up to +/-23.4 degrees, so the surface has real structure in
+epoch; its period is 25.8 kyr, so within the Holocene the solution is unique.
 
 What to look for
 ----------------
-Modern reconstructions are built by scholars who know where the culture lived
-and would not have included stars invisible from there today, so finding a canon
-visible from its own latitude at the present epoch is close to circular. The
-informative case is the opposite one, flagged as `informative` in the summary:
+Modern reconstructions are built by scholars who know where a culture lived and
+would not have included stars invisible from there today, so finding a canon
+consistent with its own latitude at the present epoch is close to circular. The
+informative case is the opposite one, flagged as `informative`:
 
-    the present epoch is NOT admissible, while some past epoch is
+    the present epoch is excluded at the known latitude, while some past epoch
+    is not
 
-that cannot be an artefact of the reconstruction, and marks a canon that only
-makes sense as an inheritance from an earlier sky.
-
-Expect few such cultures. For most the constraint will be wide and the present
-admissible, which is the correct answer rather than a failure of the method.
+which no reconstruction can have manufactured, and which marks a canon that only
+makes sense as an inheritance from an earlier sky. Expect few such cultures: for
+most, the constraint will be wide and the present perfectly admissible, and that
+is the correct answer rather than a failure.
 
 Usage
 -----
@@ -76,13 +91,17 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+# Chi-square quantiles used only to draw and describe the regions.
+CHI2_1DOF_95 = 3.841
+CHI2_2DOF_95 = 5.991
+
 # Approximate observing latitude of each sky culture, in degrees, positive north.
-# These are coarse centroids of the region a culture is attached to, meant to be
-# reviewed and overridden with --latitudes; they carry no better precision than a
-# degree or two, and for seafaring cultures a single latitude is a poor model of
-# a voyaging range in the first place. A culture absent from this table is still
-# analysed, but only its two-dimensional admissible region is reported, since
-# without a latitude there is no epoch constraint to extract.
+# Coarse centroids of the region a culture is attached to, meant to be reviewed
+# and overridden with --latitudes; they carry no better precision than a degree
+# or two, and for a seafaring culture a single latitude is a poor model of a
+# voyaging range in the first place. A culture absent from this table is still
+# analysed, but only its two-dimensional surface is reported, since without a
+# latitude there is no epoch constraint to extract.
 DEFAULT_LATITUDES: dict[str, float] = {
     "almagest": 31.2,                    # Alexandria
     "anutan": -11.6,                     # Anuta, Solomon Is.
@@ -137,85 +156,112 @@ def log(msg: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Core computation
+# Likelihood
 # ---------------------------------------------------------------------------
-def violation_map(dec: np.ndarray, lat_grid: np.ndarray, h_min: float) -> np.ndarray:
-    """Number of canon stars that never reach h_min, per (epoch, latitude).
+def binom_loglik(k, n):
+    """Log-likelihood of k successes in n trials at the maximum, p = k/n.
 
-    dec has shape (n_epoch, n_star) and holds declinations of date. A star is
-    counted when its culmination altitude 90 - |phi - d| falls below h_min, i.e.
-    when it lies outside the declination window the latitude can ever lift that
-    high. Latitudes are looped over rather than broadcast so that the temporary
-    stays of size (n_epoch, n_star) instead of (n_epoch, n_star, n_lat).
+    Zero when n is zero and when k is 0 or n, the conventions that make the
+    two halves of the split table combine without special-casing empty halves.
     """
-    out = np.empty((dec.shape[0], lat_grid.size), dtype=np.int32)
-    reach = 90.0 - h_min
-    for j, phi in enumerate(lat_grid):
-        out[:, j] = ((dec < phi - reach) | (dec > phi + reach)).sum(axis=1)
-    return out
+    k = np.asarray(k, dtype=float)
+    n = np.asarray(n, dtype=float)
+    m = n - k
+    with np.errstate(divide="ignore", invalid="ignore"):
+        a = np.where(k > 0, k * np.log(np.where(k > 0, k / np.where(n > 0, n, 1.0), 1.0)), 0.0)
+        b = np.where(m > 0, m * np.log(np.where(m > 0, m / np.where(n > 0, n, 1.0), 1.0)), 0.0)
+    return np.where(n > 0, a + b, 0.0)
 
 
-def band_edges(viol: np.ndarray, lat_grid: np.ndarray, k: int):
-    """Lowest and highest latitude tolerating at most k unseen stars, per epoch.
+def profile_cutoff(h: np.ndarray, in_canon: np.ndarray, hmin_grid: np.ndarray):
+    """Best cutoff altitude for one (latitude, epoch), by profile likelihood.
 
-    Also reports whether the admissible set is a single interval. It usually is,
-    but nothing guarantees it: the count rises with latitude as southern stars
-    drop out and falls as northern ones come in, and a canon clumped at both
-    declination extremes can in principle split the set in two, which would make
-    a plain min/max summary misleading.
+    Sorting the catalogue by culmination altitude once turns the counts of the
+    2x2 table into cumulative sums, so every candidate cutoff is evaluated
+    without re-scanning the stars. Returns the maximised log-likelihood, the
+    cutoff attaining it, the four counts there, and the log-likelihood of the
+    null in which membership does not depend on altitude at all.
     """
-    ok = viol <= k
-    n_epoch = viol.shape[0]
-    lo = np.full(n_epoch, np.nan)
-    hi = np.full(n_epoch, np.nan)
-    contiguous = np.ones(n_epoch, dtype=bool)
+    order = np.argsort(h, kind="stable")
+    hs = h[order]
+    ins = in_canon[order].astype(np.int64)
+
+    cum_in = np.concatenate(([0], np.cumsum(ins)))
+    n = h.size
+    total_in = int(cum_in[-1])
+
+    # Number of catalogue stars strictly below each candidate cutoff.
+    idx = np.searchsorted(hs, hmin_grid, side="left")
+
+    B = cum_in[idx].astype(float)          # canon stars below the cutoff
+    D = idx.astype(float) - B              # other stars below
+    A = float(total_in) - B                # canon stars at or above
+    C = (n - idx).astype(float) - A        # other stars at or above
+
+    ll = binom_loglik(A, A + C) + binom_loglik(B, B + D)
+    j = int(np.argmax(ll))
+
+    ll_null = float(binom_loglik(total_in, n))
+    return (float(ll[j]), float(hmin_grid[j]),
+            float(A[j]), float(B[j]), float(C[j]), float(D[j]), ll_null)
+
+
+def surface(dec_canon: np.ndarray, dec_other: np.ndarray, lat_grid: np.ndarray,
+            hmin_grid: np.ndarray):
+    """Profile log-likelihood over the (epoch, latitude) grid.
+
+    dec_canon and dec_other hold declinations of date, shaped (n_epoch, n_star),
+    for the catalogue stars that are and are not in the culture's canon.
+    """
+    n_epoch = dec_canon.shape[0]
+    n_lat = lat_grid.size
+
+    ll = np.full((n_epoch, n_lat), -np.inf)
+    ll_null = np.zeros(n_epoch)
+    hmin = np.full((n_epoch, n_lat), np.nan)
+    cnt = np.zeros((n_epoch, n_lat, 4))
+
+    in_canon = np.concatenate((np.ones(dec_canon.shape[1], dtype=bool),
+                               np.zeros(dec_other.shape[1], dtype=bool)))
 
     for i in range(n_epoch):
-        idx = np.flatnonzero(ok[i])
-        if idx.size == 0:
-            contiguous[i] = True          # empty set, nothing to be split
-            continue
-        lo[i] = lat_grid[idx[0]]
-        hi[i] = lat_grid[idx[-1]]
-        contiguous[i] = idx.size == (idx[-1] - idx[0] + 1)
+        dec = np.concatenate((dec_canon[i], dec_other[i]))
+        for j, phi in enumerate(lat_grid):
+            h = 90.0 - np.abs(phi - dec)
+            v, hm, A, B, C, D, lln = profile_cutoff(h, in_canon, hmin_grid)
+            ll[i, j] = v
+            hmin[i, j] = hm
+            cnt[i, j] = (A, B, C, D)
+            ll_null[i] = lln
 
-    return lo, hi, contiguous
-
-
-def admissible_epochs(viol: np.ndarray, lat_grid: np.ndarray,
-                      epochs: np.ndarray, lat_known: float, k: int):
-    """Epochs at which the canon is visible from a known latitude."""
-    j = int(np.argmin(np.abs(lat_grid - lat_known)))
-    ok = viol[:, j] <= k
-    return epochs[ok], ok
+    return ll, hmin, cnt, ll_null
 
 
 # ---------------------------------------------------------------------------
 # Plot
 # ---------------------------------------------------------------------------
-def plot_culture(culture: str, epochs: np.ndarray, lat_grid: np.ndarray,
-                 viol: np.ndarray, lat_known: float | None,
-                 present_epoch: float, h_min: float, path: Path) -> None:
+def plot_culture(culture: str, epochs, lat_grid, ll, lat_known,
+                 present_epoch, best, path: Path) -> None:
+    dev = 2.0 * (np.nanmax(ll) - ll)
+
     fig, ax = plt.subplots(figsize=(11, 6))
+    mesh = ax.pcolormesh(epochs, lat_grid, np.clip(dev, 0, 40).T,
+                         cmap="viridis_r", shading="auto", vmin=0, vmax=40)
+    fig.colorbar(mesh, ax=ax, label=r"$2\,\Delta\log L$ dal massimo")
 
-    # Shade by how many stars fail, saturating early: the interesting contrast is
-    # between none, a few and many, not the exact count deep in the excluded zone.
-    shown = np.clip(viol, 0, 10)
-    mesh = ax.pcolormesh(epochs, lat_grid, shown.T, cmap="inferno_r",
-                         shading="auto", vmin=0, vmax=10)
-    fig.colorbar(mesh, ax=ax, label="stelle mai sopra l'orizzonte pratico")
+    ax.contour(epochs, lat_grid, dev.T, levels=[CHI2_2DOF_95],
+               colors="white", linewidths=1.6)
 
-    ax.contour(epochs, lat_grid, viol.T, levels=[0.5], colors="cyan", linewidths=1.6)
-
+    ax.plot(best["epoch"], best["lat"], "r*", ms=14, label="massimo")
     if lat_known is not None:
-        ax.axhline(lat_known, color="lime", lw=1.4, ls="--",
+        ax.axhline(lat_known, color="orange", lw=1.4, ls="--",
                    label=f"latitudine nota {lat_known:+.1f}°")
     ax.axvline(present_epoch, color="white", lw=1.0, ls=":", label="presente")
 
     ax.set_xlabel("Epoca [kyr dall'anno 0]")
     ax.set_ylabel("Latitudine dell'osservatore [°]")
-    ax.set_title(f"{culture} — regione ammissibile (h_min = {h_min:.0f}°); "
-                 f"il contorno ciano racchiude zero violazioni")
+    ax.set_title(f"{culture} — verosimiglianza profilata; "
+                 f"contorno bianco = regione al 95%")
     ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
     fig.savefig(path, dpi=150, bbox_inches="tight")
@@ -227,7 +273,7 @@ def plot_culture(culture: str, epochs: np.ndarray, lat_grid: np.ndarray,
 # ---------------------------------------------------------------------------
 def main() -> None:
     p = argparse.ArgumentParser(
-        description="Latitude and epoch constraints from canon visibility.")
+        description="Latitude and epoch of a sky culture from canon visibility.")
     p.add_argument("--trajectories", required=True,
                    help="trajectories.csv from bright_star_grid.py")
     p.add_argument("--skycultures", required=True,
@@ -238,23 +284,24 @@ def main() -> None:
                    help="CSV with columns culture,latitude overriding the built-in table")
     p.add_argument("--Tmin", type=float, default=-30.0, help="earliest epoch, kyr")
     p.add_argument("--Tmax", type=float, default=2.0, help="latest epoch, kyr")
-    p.add_argument("--epoch-step", type=float, default=0.1, help="epoch step, kyr")
-    p.add_argument("--lat-step", type=float, default=0.5, help="latitude step, deg")
-    p.add_argument("--h-min", type=float, nargs="+", default=[0.0, 5.0, 10.0],
-                   help="practical horizon altitudes to report, deg")
-    p.add_argument("--k-outliers", type=int, nargs="+", default=[0, 1, 3],
-                   help="tolerated unseen stars")
+    p.add_argument("--epoch-step", type=float, default=0.2, help="epoch step, kyr")
+    p.add_argument("--lat-step", type=float, default=1.0, help="latitude step, deg")
+    p.add_argument("--hmin-max", type=float, default=30.0,
+                   help="upper bound of the fitted practical horizon, deg")
+    p.add_argument("--hmin-step", type=float, default=0.5,
+                   help="resolution of the fitted practical horizon, deg")
     p.add_argument("--present-kyr", type=float, default=2.0,
                    help="epoch taken as the present, kyr from year 0")
     p.add_argument("--min-stars", type=int, default=10,
                    help="skip cultures with fewer catalogued stars")
-    p.add_argument("--ref-h-min", type=float, default=5.0,
-                   help="h_min used for the per-culture plot")
+    p.add_argument("--permutations", type=int, default=0,
+                   help="permutation replicas calibrating lr_cutoff (0 skips)")
+    p.add_argument("--seed", type=int, default=20260814)
     args = p.parse_args()
 
     outdir = Path(args.outdir)
-    (outdir / "bands").mkdir(parents=True, exist_ok=True)
-    (outdir / "maps").mkdir(parents=True, exist_ok=True)
+    (outdir / "surfaces").mkdir(parents=True, exist_ok=True)
+    rng = np.random.default_rng(args.seed)
 
     latitudes = dict(DEFAULT_LATITUDES)
     if args.latitudes:
@@ -276,14 +323,22 @@ def main() -> None:
         raise SystemExit("No epoch in the trajectory file falls in the requested range.")
     base_step = np.min(np.diff(available)) if available.size > 1 else args.epoch_step
     stride = max(1, int(round(args.epoch_step / base_step)))
-    epochs = keep[::stride]
-    traj = traj[traj["epoch"].isin(epochs)]
+    epochs_sel = keep[::stride]
+    traj = traj[traj["epoch"].isin(epochs_sel)]
+
+    wide = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
+    epochs = wide.index.to_numpy(dtype=float)
+    all_hips = wide.columns.to_numpy()
+    dec_all = wide.to_numpy(dtype=float)
     log(f"Epochs: {epochs.size} from {epochs.min():+.1f} to {epochs.max():+.1f} kyr")
 
     lat_grid = np.arange(-90.0, 90.0 + 1e-9, args.lat_step)
-    log(f"Latitudes: {lat_grid.size} from {lat_grid[0]:+.0f} to {lat_grid[-1]:+.0f}")
+    hmin_grid = np.arange(0.0, args.hmin_max + 1e-9, args.hmin_step)
+    log(f"Latitudes: {lat_grid.size} | cutoff grid: {hmin_grid.size} "
+        f"(0 .. {args.hmin_max:.0f}°)")
 
     present_epoch = float(epochs[np.argmin(np.abs(epochs - args.present_kyr))])
+    i_present = int(np.argmin(np.abs(epochs - present_epoch)))
     log(f"Present taken as epoch {present_epoch:+.1f} kyr")
 
     members = pd.read_csv(Path(args.skycultures) / "members.csv")
@@ -296,122 +351,117 @@ def main() -> None:
     log(f"Cultures: {len(cultures)}")
     log("")
 
-    summaries = []
-
+    rows = []
     for culture in cultures:
         hips = np.sort(members.loc[members["culture"] == culture, "HIP"].unique())
-        sub = traj[traj["HIP"].isin(hips)]
-        n_present = sub["HIP"].nunique()
+        mask = np.isin(all_hips, hips)
+        n_present = int(mask.sum())
         if n_present < args.min_stars:
             log(f"  {culture:28s} SKIP: {n_present} stelle nel catalogo")
             continue
 
-        mat = sub.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-        dec = mat.to_numpy(dtype=float)
-        ep = mat.index.to_numpy(dtype=float)
+        dec_canon = dec_all[:, mask]
+        dec_other = dec_all[:, ~mask]
+
+        ll, hmin, cnt, ll_null = surface(dec_canon, dec_other, lat_grid, hmin_grid)
+
+        flat = int(np.argmax(ll))
+        bi, bj = np.unravel_index(flat, ll.shape)
+        A, B, C, D = cnt[bi, bj]
+        best = {"epoch": float(epochs[bi]), "lat": float(lat_grid[bj])}
+        lr_cutoff = 2.0 * (ll[bi, bj] - ll_null[bi])
+
+        dev = 2.0 * (ll[bi, bj] - ll)
+        inside = dev <= CHI2_2DOF_95
+        lat_lo = float(lat_grid[inside.any(axis=0)].min())
+        lat_hi = float(lat_grid[inside.any(axis=0)].max())
+        ep_lo = float(epochs[inside.any(axis=1)].min())
+        ep_hi = float(epochs[inside.any(axis=1)].max())
+
         lat_known = latitudes.get(culture)
+        np.save(outdir / "surfaces" / f"{culture}_loglik.npy", ll)
+        plot_culture(culture, epochs, lat_grid, ll, lat_known,
+                     present_epoch, best, outdir / "surfaces" / f"{culture}.pdf")
 
-        i_present = int(np.argmin(np.abs(ep - present_epoch)))
-        dec_span_now = float(dec[i_present].max() - dec[i_present].min())
+        row = {
+            "culture": culture,
+            "n_stars_culture": len(hips),
+            "n_stars_present": n_present,
+            "coverage": n_present / len(hips),
+            "best_epoch_kyr": best["epoch"],
+            "best_epoch_year": best["epoch"] * 1000.0,
+            "best_latitude_deg": best["lat"],
+            "fitted_h_min_deg": float(hmin[bi, bj]),
+            "n_canon_above": A, "n_canon_below": B,
+            "p_above": A / (A + C) if (A + C) > 0 else np.nan,
+            "p_below": B / (B + D) if (B + D) > 0 else np.nan,
+            "lr_cutoff": lr_cutoff,
+            "lat_lo95_deg": lat_lo, "lat_hi95_deg": lat_hi,
+            "epoch_lo95_kyr": ep_lo, "epoch_hi95_kyr": ep_hi,
+            "lat_known_deg": lat_known if lat_known is not None else np.nan,
+        }
 
-        band_rows = []
-        for h_min in args.h_min:
-            viol = violation_map(dec, lat_grid, h_min)
+        if lat_known is None:
+            row.update(present_excluded=np.nan, best_epoch_at_known_kyr=np.nan,
+                       lr_present=np.nan, informative=False,
+                       notes="latitudine non nota: solo superficie 2D")
+        else:
+            jk = int(np.argmin(np.abs(lat_grid - lat_known)))
+            prof = ll[:, jk]
+            ib = int(np.argmax(prof))
+            lr_present = 2.0 * (prof[ib] - prof[i_present])
+            excluded = bool(lr_present > CHI2_1DOF_95)
+            row.update(
+                best_epoch_at_known_kyr=float(epochs[ib]),
+                lr_present=float(lr_present),
+                present_excluded=excluded,
+                # The one configuration a modern reconstruction cannot produce.
+                informative=bool(excluded and np.isfinite(prof[ib])),
+                notes="",
+            )
 
-            if abs(h_min - args.ref_h_min) < 1e-9:
-                np.save(outdir / "maps" / f"{culture}_hmin{h_min:.0f}.npy", viol)
-                plot_culture(culture, ep, lat_grid, viol, lat_known,
-                             present_epoch, h_min,
-                             outdir / "maps" / f"{culture}.pdf")
+        if args.permutations > 0:
+            # Membership is shuffled among catalogue stars and the whole
+            # maximisation repeated, which calibrates lr_cutoff without relying
+            # on a chi-square that the threshold parameter invalidates.
+            null_lr = np.empty(args.permutations)
+            for r in range(args.permutations):
+                perm = rng.permutation(dec_all.shape[1])
+                dc = dec_all[:, perm[:n_present]]
+                do = dec_all[:, perm[n_present:]]
+                llp, _, _, llnp = surface(dc, do, lat_grid, hmin_grid)
+                f = int(np.argmax(llp))
+                pi, pj = np.unravel_index(f, llp.shape)
+                null_lr[r] = 2.0 * (llp[pi, pj] - llnp[pi])
+            row["p_lr_permutation"] = float((null_lr >= lr_cutoff).mean())
+        else:
+            row["p_lr_permutation"] = np.nan
 
-            for k in args.k_outliers:
-                lo, hi, contig = band_edges(viol, lat_grid, k)
-                for i in range(ep.size):
-                    band_rows.append({
-                        "culture": culture, "epoch_kyr": ep[i],
-                        "h_min_deg": h_min, "k_outliers": k,
-                        "lat_lo_deg": lo[i], "lat_hi_deg": hi[i],
-                        "contiguous": contig[i],
-                        "dec_min_deg": dec[i].min(), "dec_max_deg": dec[i].max(),
-                    })
+        rows.append(row)
 
-                row = {
-                    "culture": culture,
-                    "n_stars_culture": len(hips),
-                    "n_stars_present": n_present,
-                    "coverage": n_present / len(hips),
-                    "h_min_deg": h_min, "k_outliers": k,
-                    "dec_span_present_deg": dec_span_now,
-                    "band_width_present_deg": hi[i_present] - lo[i_present],
-                    "lat_lo_present_deg": lo[i_present],
-                    "lat_hi_present_deg": hi[i_present],
-                    "lat_known_deg": lat_known if lat_known is not None else np.nan,
-                }
+        lat_txt = (f"lat nota {lat_known:+5.1f}°" if lat_known is not None
+                   else "lat ignota    ")
+        verdict = ("INFORMATIVA" if row["informative"]
+                   else ("presente ammesso" if lat_known is not None else "--"))
+        log(f"  {culture:28s} {n_present:4d} st | max ({best['epoch']:+6.1f} kyr, "
+            f"{best['lat']:+5.1f}°) | h_min {row['fitted_h_min_deg']:4.1f}° | "
+            f"p_sotto {row['p_below']:.3f} vs p_sopra {row['p_above']:.3f} | "
+            f"LR {lr_cutoff:6.1f} | {lat_txt} | {verdict}")
 
-                if lat_known is None:
-                    row.update(present_admissible=np.nan, n_epochs_admissible=np.nan,
-                               frac_epochs_admissible=np.nan,
-                               epoch_admissible_min=np.nan, epoch_admissible_max=np.nan,
-                               informative=False,
-                               notes="latitudine non nota: solo regione 2D")
-                else:
-                    good_ep, ok = admissible_epochs(viol, lat_grid, ep, lat_known, k)
-                    present_ok = bool(ok[i_present])
-                    row.update(
-                        present_admissible=present_ok,
-                        n_epochs_admissible=int(ok.sum()),
-                        frac_epochs_admissible=float(ok.mean()),
-                        epoch_admissible_min=float(good_ep.min()) if good_ep.size else np.nan,
-                        epoch_admissible_max=float(good_ep.max()) if good_ep.size else np.nan,
-                        # The one case a modern reconstruction cannot have
-                        # manufactured: unusable today, usable in the past.
-                        informative=bool((not present_ok) and ok.any()),
-                        notes="",
-                    )
-                summaries.append(row)
-
-        pd.DataFrame(band_rows).to_csv(outdir / "bands" / f"{culture}.csv", index=False)
-
-        ref = [s for s in summaries
-               if s["culture"] == culture
-               and abs(s["h_min_deg"] - args.ref_h_min) < 1e-9
-               and s["k_outliers"] == 0]
-        if ref:
-            r = ref[0]
-            lat_txt = (f"lat nota {r['lat_known_deg']:+5.1f}°"
-                       if not np.isnan(r["lat_known_deg"]) else "lat ignota    ")
-            if np.isnan(r["lat_known_deg"]):
-                verdict = "--"
-            elif r["informative"]:
-                verdict = "INFORMATIVA"
-            elif r["present_admissible"]:
-                verdict = "presente ammesso"
-            else:
-                verdict = "nessuna epoca ammessa"
-            log(f"  {culture:28s} {n_present:4d} st | span {dec_span_now:5.1f}° | "
-                f"banda oggi [{r['lat_lo_present_deg']:+6.1f},{r['lat_hi_present_deg']:+6.1f}] | "
-                f"{lat_txt} | {verdict}")
-
-    if not summaries:
+    if not rows:
         raise SystemExit("No culture could be analysed.")
 
-    out = pd.DataFrame(summaries)
+    out = pd.DataFrame(rows)
     out.to_csv(outdir / "summary.csv", index=False)
 
-    ref = out[(np.abs(out["h_min_deg"] - args.ref_h_min) < 1e-9)
-              & (out["k_outliers"] == 0)]
     log("")
-    log(f"Written {outdir}/summary.csv  ({len(out)} rows, "
-        f"{out['culture'].nunique()} cultures)")
-    log(f"  reference h_min={args.ref_h_min:.0f}°, k=0:")
-    log(f"    culture informative (presente escluso, passato ammesso): "
-        f"{int(ref['informative'].sum())}")
-    log(f"    presente ammesso                                       : "
-        f"{int((ref['present_admissible'] == True).sum())}")
-    log(f"    nessuna epoca ammessa                                  : "
-        f"{int(((ref['present_admissible'] == False) & (~ref['informative'])).sum())}")
-    log(f"    latitudine non nota                                    : "
-        f"{int(ref['lat_known_deg'].isna().sum())}")
+    log(f"Written {outdir}/summary.csv  ({len(out)} cultures)")
+    log(f"  informative (presente escluso alla latitudine nota): "
+        f"{int(out['informative'].sum())}")
+    log(f"  orizzonte pratico stimato: mediana "
+        f"{np.nanmedian(out['fitted_h_min_deg']):.1f}°, "
+        f"intervallo [{np.nanmin(out['fitted_h_min_deg']):.1f}, "
+        f"{np.nanmax(out['fitted_h_min_deg']):.1f}]°")
 
 
 if __name__ == "__main__":
