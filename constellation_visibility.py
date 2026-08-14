@@ -76,6 +76,24 @@ Usage
         --trajectories BSGRID/trajectories.csv \
         --skycultures skycultures_csv \
         --outdir constellation_visibility_out
+
+Output
+------
+    summary.csv              one row per culture: the maximum, the fitted
+                             practical horizon, the two inclusion rates, the
+                             95% ranges and the verdict on the present epoch
+
+    surfaces/<culture>.csv   the profile surface in long form, one row per
+                             (epoch, latitude), carrying the log-likelihood, its
+                             distance from the maximum, whether the cell is
+                             inside the 95% region, the cutoff fitted there and
+                             the four counts behind it
+
+    surfaces/<culture>.pdf   the same surface drawn, with the known latitude and
+                             the present epoch marked
+
+Grid resolution, and so the size of the surface files, is set by --epoch-step
+and --lat-step.
 """
 
 from __future__ import annotations
@@ -240,6 +258,45 @@ def surface(dec_canon: np.ndarray, dec_other: np.ndarray, lat_grid: np.ndarray,
 # ---------------------------------------------------------------------------
 # Plot
 # ---------------------------------------------------------------------------
+def write_surface_csv(path: Path, epochs, lat_grid, ll, hmin, cnt,
+                      ll_best: float) -> int:
+    """Write the profile surface in long form, one row per (epoch, latitude).
+
+    Everything the fit produces at a cell is kept, not just the log-likelihood:
+    the cutoff attaining it and the four counts behind it are what make a cell
+    interpretable, and they are computed anyway.
+    """
+    n_epoch, n_lat = ll.shape
+    ep = np.repeat(epochs, n_lat)
+    la = np.tile(lat_grid, n_epoch)
+
+    A = cnt[:, :, 0].ravel()
+    B = cnt[:, :, 1].ravel()
+    C = cnt[:, :, 2].ravel()
+    D = cnt[:, :, 3].ravel()
+    above = A + C
+    below = B + D
+
+    flat_ll = ll.ravel()
+    df = pd.DataFrame({
+        "epoch_kyr": ep,
+        "lat_deg": la,
+        "loglik": flat_ll,
+        # Distance from the best cell, in the units the confidence contour uses.
+        "delta_2loglik": 2.0 * (ll_best - flat_ll),
+        "inside_95": 2.0 * (ll_best - flat_ll) <= CHI2_2DOF_95,
+        "h_min_fitted_deg": hmin.ravel(),
+        "n_canon_above": A.astype(int),
+        "n_canon_below": B.astype(int),
+        "n_other_above": C.astype(int),
+        "n_other_below": D.astype(int),
+        "p_above": np.divide(A, above, out=np.full_like(A, np.nan), where=above > 0),
+        "p_below": np.divide(B, below, out=np.full_like(B, np.nan), where=below > 0),
+    })
+    df.to_csv(path, index=False, float_format="%.4f")
+    return len(df)
+
+
 def plot_culture(culture: str, epochs, lat_grid, ll, lat_known,
                  present_epoch, best, path: Path) -> None:
     dev = 2.0 * (np.nanmax(ll) - ll)
@@ -379,7 +436,8 @@ def main() -> None:
         ep_hi = float(epochs[inside.any(axis=1)].max())
 
         lat_known = latitudes.get(culture)
-        np.save(outdir / "surfaces" / f"{culture}_loglik.npy", ll)
+        write_surface_csv(outdir / "surfaces" / f"{culture}.csv",
+                          epochs, lat_grid, ll, hmin, cnt, float(ll[bi, bj]))
         plot_culture(culture, epochs, lat_grid, ll, lat_known,
                      present_epoch, best, outdir / "surfaces" / f"{culture}.pdf")
 
