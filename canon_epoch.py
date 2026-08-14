@@ -24,6 +24,19 @@ guard against that: the interval is reported for zero, one, two and three
 tolerated stars, and the binding star at each edge is named, which is the part
 that can be checked by hand against the ethnographic source.
 
+The named stars alone bound the latitude from one side only -- they say it was
+not so far north that any of them stayed down -- so a second count supplies the
+other. A star brighter than --v-bright standing well above the horizon and
+absent from the canon counts as an omission: nobody overlooks a second-magnitude
+star in their own sky. Pushing the latitude south brings such stars into view,
+and where they turn out to be systematically absent is the southern bound.
+
+The two counts are never summed. A named star below the horizon is a physical
+impossibility; an unnamed bright one is only unrecorded, and the source keeps
+just the stars that are vertices of a drawn figure, so omissions are inflated
+throughout. That shortfall is roughly uniform, though, so what locates the
+latitude is the step in the omission count, not its level.
+
 Usage
 -----
     python3 canon_epoch.py \
@@ -126,50 +139,66 @@ def interval_at_level(n_unusable: np.ndarray, epochs: np.ndarray, level: int):
     }
 
 
-def plot_band(culture, epochs, lat_grid, n_unusable, lat_nom, present_epoch,
-              path: Path) -> None:
-    """Unusable count over the latitude band, with the nominal latitude marked.
+def plot_band(culture, epochs, lat_grid, n_unusable, n_missed, lat_nom,
+              present_epoch, v_bright, path: Path) -> None:
+    """The two counts over the latitude band, on shared axes.
 
-    Drawn as a map rather than reduced to its best cell: the band measures how
-    robust the window at the nominal latitude is, it does not replace it.
+    Side by side rather than combined: one bounds the latitude from the north,
+    the other from the south, and the culture sits where both are low. They are
+    not added, because they do not carry the same weight -- a named star below
+    the horizon is impossible, an unnamed bright one merely unrecorded.
     """
-    fig, ax = plt.subplots(figsize=(11, 6))
-    mesh = ax.pcolormesh(epochs, lat_grid, np.clip(n_unusable, 0, 20).T,
-                         cmap="inferno_r", shading="auto", vmin=0, vmax=20)
-    fig.colorbar(mesh, ax=ax, label=f"stelle sotto {H_CRIT:.0f}°")
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=True)
 
-    levels = [l for l in LEVELS
-              if (n_unusable <= l).any() and (n_unusable > l).any()]
-    if levels:
-        cs = ax.contour(epochs, lat_grid, n_unusable.T,
-                        levels=[l + 0.5 for l in levels],
-                        colors="cyan", linewidths=1.2)
-        ax.clabel(cs, fmt={l + 0.5: str(l) for l in levels}, fontsize=7)
+    for ax, data, title, cap in (
+        (axes[0], n_unusable,
+         "nominate ma sotto il criterio", f"stelle sotto {H_CRIT:.0f}°"),
+        (axes[1], n_missed,
+         f"brillanti (V<{v_bright:.1f}) visibili ma non nominate",
+         "stelle non nominate"),
+    ):
+        mesh = ax.pcolormesh(epochs, lat_grid, np.clip(data, 0, 20).T,
+                             cmap="inferno_r", shading="auto", vmin=0, vmax=20)
+        fig.colorbar(mesh, ax=ax, label=cap)
+        levels = [l for l in LEVELS if (data <= l).any() and (data > l).any()]
+        if levels:
+            cs = ax.contour(epochs, lat_grid, data.T,
+                            levels=[l + 0.5 for l in levels],
+                            colors="cyan", linewidths=1.2)
+            ax.clabel(cs, fmt={l + 0.5: str(l) for l in levels}, fontsize=7)
+        ax.axhline(lat_nom, color="lime", lw=1.6, ls="--",
+                   label=f"lat. nominale {lat_nom:+.1f}°")
+        ax.axvline(present_epoch, color="white", lw=1.0, ls=":", label="presente")
+        ax.set_xlabel("Epoca [kyr dall'anno 0]")
+        ax.set_title(title, fontsize=10)
+        ax.legend(loc="upper right", fontsize=7)
 
-    ax.axhline(lat_nom, color="lime", lw=1.6, ls="--",
-               label=f"latitudine nominale {lat_nom:+.1f}°")
-    ax.axvline(present_epoch, color="white", lw=1.0, ls=":", label="presente")
-    ax.set_xlabel("Epoca [kyr dall'anno 0]")
-    ax.set_ylabel("Latitudine dell'osservatore [°]")
-    ax.set_title(f"{culture} — stelle inutilizzabili su banda di latitudine")
-    ax.legend(loc="upper right", fontsize=8)
+    axes[0].set_ylabel("Latitudine dell'osservatore [°]")
+    fig.suptitle(f"{culture} — i due vincoli; la cultura sta dove entrambi "
+                 f"sono bassi", fontsize=12)
     fig.tight_layout()
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
 
-def plot_series(culture, epochs, n_unusable, h_low, lat, present_epoch,
-                path: Path) -> None:
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
+def plot_series(culture, epochs, n_unusable, n_missed, h_low, lat,
+                present_epoch, v_bright, path: Path) -> None:
+    fig, (ax1, ax0, ax2) = plt.subplots(3, 1, figsize=(10, 9), sharex=True)
 
     ax1.step(epochs, n_unusable, where="mid", lw=1.4)
     ax1.axhline(0, color="green", lw=1.0, ls="--", label="canone interamente usabile")
     ax1.axvline(present_epoch, color="k", lw=1.0, ls=":", label="presente")
-    ax1.set_ylabel(f"stelle sotto {H_CRIT:.0f}°")
+    ax1.set_ylabel(f"nominate sotto {H_CRIT:.0f}°")
     ax1.set_ylim(bottom=0)
     ax1.set_title(f"{culture} — latitudine {lat:+.1f}°")
     ax1.legend(fontsize=8)
     ax1.grid(alpha=0.3)
+
+    ax0.step(epochs, n_missed, where="mid", lw=1.4, color="darkorange")
+    ax0.axvline(present_epoch, color="k", lw=1.0, ls=":")
+    ax0.set_ylabel(f"brillanti V<{v_bright:.1f}\nnon nominate")
+    ax0.set_ylim(bottom=0)
+    ax0.grid(alpha=0.3)
 
     ax2.plot(epochs, h_low, lw=1.4, color="darkgreen")
     ax2.axhline(H_CRIT, color="crimson", lw=1.2, ls="--",
@@ -210,6 +239,9 @@ def main() -> None:
                         "nominal value, degrees")
     p.add_argument("--lat-step", type=float, default=1.0,
                    help="latitude step inside the band, degrees")
+    p.add_argument("--v-bright", type=float, default=2.0,
+                   help="a star this bright standing in the sky is taken to "
+                        "have been known; magnitude of date, not of today")
     args = p.parse_args()
 
     outdir = Path(args.outdir)
@@ -225,7 +257,7 @@ def main() -> None:
     log(f"Reading {args.trajectories} ...")
     traj = pd.read_csv(args.trajectories,
                        usecols=["epoch_kyr_from_year0", "HIP", "dec_deg",
-                                "ecl_lat_deg", "Bayer", "NAME"])
+                                "ecl_lat_deg", "Vmag", "Bayer", "NAME"])
     traj = traj.rename(columns={"epoch_kyr_from_year0": "epoch"})
     traj["epoch"] = traj["epoch"].round(6)
     log(f"  {len(traj):,} rows, {traj['HIP'].nunique()} stars")
@@ -264,6 +296,12 @@ def main() -> None:
     ecl = traj.pivot(index="epoch", columns="HIP",
                      values="ecl_lat_deg").sort_index().to_numpy(dtype=float)
 
+    # Apparent magnitude of date, not today's: over these spans stars move
+    # enough in distance to change brightness appreciably, and the question is
+    # what was bright then.
+    mag_all = traj.pivot(index="epoch", columns="HIP",
+                         values="Vmag").sort_index().to_numpy(dtype=float)
+
     present_epoch = float(epochs[np.argmin(np.abs(epochs - args.present_kyr))])
     i_present = int(np.argmin(np.abs(epochs - present_epoch)))
     log(f"Present taken as epoch {present_epoch:+.1f} kyr | criterio {H_CRIT:.0f}°")
@@ -276,6 +314,7 @@ def main() -> None:
 
     rows = []
     never_rows = []
+    missed_rows = []
     for culture in cultures:
         lat = latitudes.get(culture)
         if lat is None:
@@ -296,16 +335,22 @@ def main() -> None:
         h_low = h[np.arange(h.shape[0]), j_low]
         low_hip = hips_here[j_low]
 
+        bright0 = mag_all < args.v_bright
+        h_nom0 = 90.0 - np.abs(lat - dec_all)
+        n_missed_nom = (bright0 & ~mask & (h_nom0 > H_CRIT)).sum(axis=1)
+
         pd.DataFrame({
             "epoch_kyr": epochs,
             "n_unusable": n_unusable,
+            "n_missed_bright": n_missed_nom,
             "h_low_deg": h_low,
             "lowest_HIP": low_hip,
             "lowest_star": [labels.get(hp, f"HIP {int(hp)}") for hp in low_hip],
         }).to_csv(outdir / "series" / f"{culture}.csv", index=False,
                   float_format="%.3f")
 
-        plot_series(culture, epochs, n_unusable, h_low, lat, present_epoch,
+        plot_series(culture, epochs, n_unusable, n_missed_nom, h_low, lat,
+                    present_epoch, args.v_bright,
                     outdir / "series" / f"{culture}.pdf")
 
         # Stars that never clear the criterion at the nominal latitude, at any
@@ -325,24 +370,63 @@ def main() -> None:
                 "epoch_of_max_kyr": float(epochs[int(np.argmax(h[:, s]))]),
             })
 
-        # Latitude band: the same count over a window around the nominal value.
-        # It separates a wrong latitude, where a nearby one opens a window, from
-        # a contaminated reconstruction, where none does.
+        # The complementary evidence. A star brighter than the threshold that
+        # stood in the sky and is absent from the canon is not a physical
+        # impossibility the way an unusable named star is, only an omission, so
+        # the two counts are kept apart and never summed: weighing one against
+        # the other would need a coefficient, and coefficients are what made
+        # every earlier version of this analysis collapse.
+        #
+        # Its use is to supply the southern bound the named stars cannot give.
+        # Named stars only say the latitude was not too far north; without this,
+        # nothing stops the admissible band running down to the equator.
+        # Its absolute level means little, since the source keeps only the stars
+        # that are vertices of a drawn figure and transmission has lost others,
+        # but that shortfall is roughly uniform. What locates the latitude is
+        # the step, where newly risen bright stars turn out to be systematically
+        # absent while those already up are largely present.
+        bright = mag_all < args.v_bright
+        outside = ~mask
+        h_nom_all = 90.0 - np.abs(lat - dec_all)
+        n_missed = (bright & outside & (h_nom_all > H_CRIT)).sum(axis=1)
+
         lat_grid = np.arange(lat - args.lat_halfwidth,
                              lat + args.lat_halfwidth + 1e-9, args.lat_step)
         n_band = np.empty((epochs.size, lat_grid.size), dtype=np.int32)
+        m_band = np.empty((epochs.size, lat_grid.size), dtype=np.int32)
         for j, phi in enumerate(lat_grid):
-            n_band[:, j] = (90.0 - np.abs(phi - dec_all[:, mask])
-                            <= H_CRIT).sum(axis=1)
+            h_all = 90.0 - np.abs(phi - dec_all)
+            n_band[:, j] = (h_all[:, mask] <= H_CRIT).sum(axis=1)
+            m_band[:, j] = (bright & outside & (h_all > H_CRIT)).sum(axis=1)
 
         pd.DataFrame({
             "epoch_kyr": np.repeat(epochs, lat_grid.size),
             "lat_deg": np.tile(lat_grid, epochs.size),
             "n_unusable": n_band.ravel(),
-        }).to_csv(outdir / "maps" / f"{culture}.csv", index=False,
-                  float_format="%.3f")
-        plot_band(culture, epochs, lat_grid, n_band, lat, present_epoch,
+            "n_missed_bright": m_band.ravel(),
+        }).to_csv(outdir / "maps" / f"{culture}.csv", index=False)
+        plot_band(culture, epochs, lat_grid, n_band, m_band, lat,
+                  present_epoch, args.v_bright,
                   outdir / "maps" / f"{culture}.pdf")
+
+        # The named list, which is the part that can be checked against the
+        # source: a bright star long in the sky and never named is either a real
+        # omission or a gap in the reconstruction, and only the source says which.
+        vis_nom = (h_nom_all > H_CRIT)
+        for s in np.flatnonzero(outside & bright.any(axis=0)):
+            seen = vis_nom[:, s] & bright[:, s]
+            if not seen.any():
+                continue
+            missed_rows.append({
+                "culture": culture,
+                "lat_deg": lat,
+                "HIP": int(all_hips[s]),
+                "star": labels.get(all_hips[s], f"HIP {int(all_hips[s])}"),
+                "Vmag_now": float(mag_all[i_present, s]),
+                "dec_now_deg": float(dec_all[i_present, s]),
+                "frac_epochs_visible_bright": float(seen.mean()),
+                "max_h_deg": float(h_nom_all[:, s].max()),
+            })
 
         band_min = int(n_band.min())
         has_window = (n_band == 0).any(axis=0)
@@ -364,6 +448,16 @@ def main() -> None:
             "epoch_max_margin_kyr": float(epochs[int(np.argmax(h_low))]),
             "max_h_low_deg": float(h_low.max()),
             "n_never_usable": int(never.size),
+            "v_bright": args.v_bright,
+            "n_missed_now": int(n_missed[i_present]),
+            "n_missed_min": int(n_missed.min()),
+            "n_missed_max": int(n_missed.max()),
+            # Where the omissions are fewest inside the band: the southern bound
+            # the named stars alone cannot supply. Going further south only adds
+            # bright stars nobody recorded.
+            "band_lat_min_missed_deg": float(lat_grid[int(np.argmin(m_band.min(axis=0)))]),
+            "band_missed_at_nominal": int(
+                m_band[i_present, int(np.argmin(np.abs(lat_grid - lat)))]),
             # Band diagnostics.
             "band_min_unusable": band_min,
             "band_lat_best_deg": float(lat_grid[bj]),
@@ -428,7 +522,7 @@ def main() -> None:
                        f"[{iv0['epoch_lo']:+6.1f},{iv0['epoch_hi']:+6.1f}] "
                        f"{state}{gap}")
         log(f"  {culture:28s} {n_canon:4d} st | oggi {row['n_unusable_now']:3d} "
-            f"inut. | {verdict}")
+            f"inut. {row['n_missed_now']:3d} omesse | {verdict}")
         if iv0 is not None and not row["lev0_present_inside"]:
             log(f"  {'':28s}      chiude: {row['binding_star_hi']}  |  "
                 f"apre: {row['binding_star_lo']}")
@@ -463,6 +557,18 @@ def main() -> None:
         deep = nv[nv["ecl_lat_deg"] < nv["never_at_any_epoch_below_ecl_lat"]]
         log(f"    di cui sotto la soglia di inaccessibilita' permanente "
             f"(beta < lat - 90 + {H_CRIT:.0f} - {OBLIQUITY_DEG:.1f}): {len(deep)}")
+
+    if missed_rows:
+        ms = pd.DataFrame(missed_rows).sort_values(
+            ["culture", "Vmag_now"])
+        ms.to_csv(outdir / "missed_bright.csv", index=False, float_format="%.2f")
+        log(f"  {outdir}/missed_bright.csv  ({len(ms)} righe): stelle "
+            f"V<{args.v_bright:.1f} in cielo e non nominate")
+        log("    le piu' vistose (visibili sempre, mai nominate):")
+        always = ms[ms["frac_epochs_visible_bright"] > 0.99].sort_values("Vmag_now")
+        for _, r in always.head(10).iterrows():
+            log(f"      {r['culture']:24s} {str(r['star'])[:16]:16s} "
+                f"V {r['Vmag_now']:4.1f}  dec {r['dec_now_deg']:+6.1f}°")
 
     log("")
     log("  Canoni la cui finestra esclude il presente, per ampiezza crescente")
