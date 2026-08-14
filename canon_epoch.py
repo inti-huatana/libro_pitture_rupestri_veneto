@@ -148,7 +148,14 @@ def plot_band(culture, epochs, lat_grid, n_unusable, n_missed, lat_nom,
     not added, because they do not carry the same weight -- a named star below
     the horizon is impossible, an unnamed bright one merely unrecorded.
     """
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=True)
+    # The third panel is the maximum of the two, not their product: a product
+    # vanishes as soon as either factor does, so it would light up the far south
+    # where every named star is up but thirty bright ones went unrecorded. The
+    # maximum is the arithmetic form of the conjunction, since max(a,b) <= k
+    # holds exactly when both do, and it needs no relative weight.
+    worst = np.maximum(n_unusable, n_missed)
+
+    fig, axes = plt.subplots(1, 3, figsize=(20, 6), sharey=True)
 
     for ax, data, title, cap in (
         (axes[0], n_unusable,
@@ -156,6 +163,9 @@ def plot_band(culture, epochs, lat_grid, n_unusable, n_missed, lat_nom,
         (axes[1], n_missed,
          f"brillanti (V<{v_bright:.1f}) visibili ma non nominate",
          "stelle non nominate"),
+        (axes[2], worst,
+         "il peggiore dei due (dove e' basso, entrambi lo sono)",
+         "max dei due conteggi"),
     ):
         mesh = ax.pcolormesh(epochs, lat_grid, np.clip(data, 0, 20).T,
                              cmap="inferno_r", shading="auto", vmin=0, vmax=20)
@@ -449,6 +459,18 @@ def main() -> None:
             "max_h_low_deg": float(h_low.max()),
             "n_never_usable": int(never.size),
             "v_bright": args.v_bright,
+            # Whether the omission argument applies at all. A canon that names
+            # nearly every bright star in its sky can be read for what it leaves
+            # out; one that names a third of them -- a set of lunar mansions, or
+            # a handful of asterisms -- omits stars for reasons that have nothing
+            # to do with the horizon, and its omission count carries no bound.
+            "bright_in_sky_now": int(
+                (bright0[i_present] & (h_nom0[i_present] > H_CRIT)).sum()),
+            "bright_named_now": int(
+                (bright0[i_present] & mask & (h_nom0[i_present] > H_CRIT)).sum()),
+            "bright_coverage_now": float(
+                (bright0[i_present] & mask & (h_nom0[i_present] > H_CRIT)).sum()
+                / max(1, (bright0[i_present] & (h_nom0[i_present] > H_CRIT)).sum())),
             "n_missed_now": int(n_missed[i_present]),
             "n_missed_min": int(n_missed.min()),
             "n_missed_max": int(n_missed.max()),
@@ -522,7 +544,8 @@ def main() -> None:
                        f"[{iv0['epoch_lo']:+6.1f},{iv0['epoch_hi']:+6.1f}] "
                        f"{state}{gap}")
         log(f"  {culture:28s} {n_canon:4d} st | oggi {row['n_unusable_now']:3d} "
-            f"inut. {row['n_missed_now']:3d} omesse | {verdict}")
+            f"inut. | brillanti {row['bright_coverage_now']:4.0%} "
+            f"({row['n_missed_now']:2d} omesse) | {verdict}")
         if iv0 is not None and not row["lev0_present_inside"]:
             log(f"  {'':28s}      chiude: {row['binding_star_hi']}  |  "
                 f"apre: {row['binding_star_lo']}")
@@ -569,6 +592,16 @@ def main() -> None:
         for _, r in always.head(10).iterrows():
             log(f"      {r['culture']:24s} {str(r['star'])[:16]:16s} "
                 f"V {r['Vmag_now']:4.1f}  dec {r['dec_now_deg']:+6.1f}°")
+
+    log("")
+    log("  Copertura delle stelle brillanti: il vincolo meridionale vale solo")
+    log("  per i canoni che tentavano di coprire il cielo, non per i sistemi")
+    log("  zodiacali o le raccolte di pochi asterismi.")
+    for _, r in out.sort_values("bright_coverage_now", ascending=False).iterrows():
+        applies = "usabile" if r["bright_coverage_now"] >= 0.8 else "NON usabile"
+        log(f"    {r['culture']:26s} {r['bright_named_now']:3d}/"
+            f"{r['bright_in_sky_now']:3d} = {r['bright_coverage_now']:4.0%}  "
+            f"vincolo meridionale {applies}")
 
     log("")
     log("  Canoni la cui finestra esclude il presente, per ampiezza crescente")
