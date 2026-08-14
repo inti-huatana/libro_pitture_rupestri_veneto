@@ -236,6 +236,47 @@ def cell_fit(v: np.ndarray, vmag: np.ndarray, y: np.ndarray, ridge: float):
     return float(beta[1]), se, float(beta[0]), float(beta[2]), ll
 
 
+def argmax_positive_slope(ll: np.ndarray, slope: np.ndarray):
+    """Best cell among those with a positive altitude effect.
+
+    A horizon can only suppress naming, so b <= 0 is not a physical solution but
+    the mirror of one: h = 90 - |phi - d| is symmetric under reflection, and
+    placing a northern canon far enough south turns the fall-off upside down,
+    giving a strong fit to nothing. Those mirrors are what used to drive the
+    maximum onto the southern edge of the grid.
+    """
+    masked = np.where(slope > 0.0, ll, -np.inf)
+    if not np.isfinite(masked).any():
+        return None
+    return np.unravel_index(int(np.argmax(masked)), ll.shape)
+
+
+def permutation_max_lr(dec, vmag, y, lat_grid, ridge, n_perm, rng,
+                       lat_stride: int = 4, epoch_stride: int = 2):
+    """Null distribution of the maximised likelihood ratio.
+
+    The reported ratio is a maximum over the whole grid, so it is not a
+    one-degree-of-freedom chi-square however regular the slope is: with several
+    thousand cells the largest of them lands near 2*ln(n_cells) under pure noise.
+    Shuffling canon membership and repeating the maximisation calibrates it
+    directly. The grid is coarsened for the replicas, which understates the
+    maximum slightly and so is conservative in the safe direction.
+    """
+    lat_c = lat_grid[::lat_stride]
+    dec_c = dec[::epoch_stride]
+    mag_c = vmag[::epoch_stride]
+    i_ref = min(dec_c.shape[0] - 1, dec.shape[0] // 2)
+
+    out = np.empty(n_perm)
+    for r in range(n_perm):
+        yp = rng.permutation(y)
+        ll, slope, _, _, _ = surface(dec_c, mag_c, yp, lat_c, ridge)
+        ll0 = null_fit(mag_c[i_ref], yp, ridge)
+        best = argmax_positive_slope(ll, slope)
+        out[r] = 0.0 if best is None else 2.0 * (ll[best] - ll0)
+    return out
+
+
 def null_fit(vmag: np.ndarray, y: np.ndarray, ridge: float) -> float:
     """Log-likelihood with the altitude effect removed, b = 0.
 
@@ -379,7 +420,13 @@ def main() -> None:
                    help="epoch taken as the present, kyr from year 0")
     p.add_argument("--min-stars", type=int, default=10,
                    help="skip cultures with fewer catalogued stars")
+    p.add_argument("--permutations", type=int, default=0,
+                   help="replicas calibrating the maximised likelihood ratio "
+                        "against the search over the grid; 0 skips, and the "
+                        "all-sky controls then serve as the empirical null")
+    p.add_argument("--seed", type=int, default=20260814)
     args = p.parse_args()
+    rng = np.random.default_rng(args.seed)
 
     outdir = Path(args.outdir)
     (outdir / "surfaces").mkdir(parents=True, exist_ok=True)
@@ -458,7 +505,12 @@ def main() -> None:
         ll, slope, slope_se, inter, cmag = surface(
             dec_all, mag_all, y, lat_grid, args.ridge)
 
-        bi, bj = np.unravel_index(int(np.argmax(ll)), ll.shape)
+        pos = argmax_positive_slope(ll, slope)
+        if pos is None:
+            log(f"  {culture:28s} SKIP: nessuna cella con effetto orizzonte "
+                f"positivo")
+            continue
+        bi, bj = pos
         best = {"epoch": float(epochs[bi]), "lat": float(lat_grid[bj])}
         lr_slope = 2.0 * (ll[bi, bj] - ll_null)
 
@@ -488,9 +540,19 @@ def main() -> None:
         def logistic(x):
             return 1.0 / (1.0 + np.exp(-np.clip(x, -500.0, 500.0)))
 
+        p_hor = float(logistic(a + c * vbar))
+        p_45 = float(logistic(a + 45.0 * b + c * vbar))
+        # A fit predicting a negligible naming probability at every altitude has
+        # separated: no canon star lies low enough to contradict the effect, the
+        # coefficient runs away and only the ridge holds it. It happens on small
+        # canons that sit entirely high in the sky, and the very large slope it
+        # produces is an artefact rather than a strong effect.
+        separated = bool(p_45 < 0.01 or p_hor < 1e-4 or abs(b) > 0.15)
+
         row = {
             "culture": culture,
             "is_allsky_control": culture in ALLSKY_CONTROLS,
+            "separated_fit": separated,
             "n_stars_culture": len(hips),
             "n_stars_present": n_present,
             "coverage": n_present / len(hips),
@@ -504,8 +566,8 @@ def main() -> None:
             # Effect size in the units the reader cares about: how much likelier
             # a star of average brightness is to be named high up than at the
             # horizon, at the best-fitting latitude and epoch.
-            "p_at_horizon": float(logistic(a + c * vbar)),
-            "p_at_45deg": float(logistic(a + 45.0 * b + c * vbar)),
+            "p_at_horizon": p_hor,
+            "p_at_45deg": p_45,
             "lat_lo95_deg": lat_lo, "lat_hi95_deg": lat_hi,
             "epoch_lo95_kyr": ep_lo, "epoch_hi95_kyr": ep_hi,
             "lat_known_deg": lat_known if lat_known is not None else np.nan,
@@ -514,18 +576,40 @@ def main() -> None:
         if lat_known is None:
             row.update(present_excluded=np.nan, best_epoch_at_known_kyr=np.nan,
                        lr_present=np.nan, informative=False,
+                       slope_at_known=np.nan, lr_slope_at_known=np.nan,
                        notes="latitudine non nota: solo superficie 2D")
         else:
             jk = int(np.argmin(np.abs(lat_grid - lat_known)))
             prof = ll[:, jk]
+            # The one test with no search behind it: latitude fixed by
+            # ethnography, epoch fixed at the present, so the ratio really does
+            # have one degree of freedom and the 3.84 threshold applies.
+            lr_known = 2.0 * (prof[i_present] - ll_null)
             ib = int(np.argmax(prof))
             lr_present = 2.0 * (prof[ib] - prof[i_present])
             excluded = bool(lr_present > CHI2_1DOF_95)
             row.update(best_epoch_at_known_kyr=float(epochs[ib]),
+                       slope_at_known=float(slope[i_present, jk]),
+                       lr_slope_at_known=float(lr_known),
                        lr_present=float(lr_present),
                        present_excluded=excluded,
-                       informative=bool(excluded),
+                       # Only a culture that shows a real horizon effect where it
+                       # actually lived can say anything about when it looked.
+                       informative=bool(excluded
+                                        and slope[i_present, jk] > 0.0
+                                        and lr_known > CHI2_1DOF_95
+                                        and not separated),
                        notes="")
+
+        if args.permutations > 0:
+            null_lr = permutation_max_lr(dec_all, mag_all, y, lat_grid,
+                                         args.ridge, args.permutations, rng)
+            row["p_lr_permutation"] = float((null_lr >= lr_slope).mean())
+            row["lr_null_median"] = float(np.median(null_lr))
+        else:
+            row["p_lr_permutation"] = np.nan
+            row["lr_null_median"] = np.nan
+
         rows.append(row)
 
         lat_txt = (f"lat nota {lat_known:+5.1f}°" if lat_known is not None
@@ -543,24 +627,37 @@ def main() -> None:
     out = pd.DataFrame(rows)
     out.to_csv(outdir / "summary.csv", index=False)
 
+    n_cells = epochs.size * lat_grid_full.size
+    look_elsewhere = 2.0 * np.log(n_cells)
+
     log("")
     log(f"Written {outdir}/summary.csv  ({len(out)} cultures)")
-    log(f"  informative (presente escluso alla latitudine nota): "
-        f"{int(out['informative'].sum())}")
-    log(f"  pendenza negativa o nulla (nessun effetto orizzonte): "
-        f"{int((out['slope_per_deg'] <= 0).sum())}")
+    log(f"  informative: {int(out['informative'].sum())}")
+    log(f"  fit separati (pendenza non attendibile): "
+        f"{int(out['separated_fit'].sum())}")
     log(f"  pendenza stimata: mediana {np.nanmedian(out['slope_per_deg']):+.4f}/°, "
         f"quartili [{np.nanpercentile(out['slope_per_deg'], 25):+.4f}, "
         f"{np.nanpercentile(out['slope_per_deg'], 75):+.4f}]")
+
+    log("")
+    log(f"  lr_slope e' un massimo su {n_cells:,} celle, non un chi-quadro a un "
+        f"grado di liberta':")
+    log(f"    sotto rumore puro il massimo vale circa 2*ln(n) = "
+        f"{look_elsewhere:.1f}, non 3.84")
+    log(f"    il test calibrato e' lr_slope_at_known, a latitudine nota ed "
+        f"epoca presente, senza ricerca dietro")
 
     ctrl = out[out["is_allsky_control"]]
     if not ctrl.empty:
         log("")
         log("  Controllo, insiemi che coprono tutto il cielo "
-            "(devono dare b vicino a zero):")
+            "(danno la soglia empirica del rumore):")
         for _, r in ctrl.iterrows():
             log(f"    {r['culture']:28s} b {r['slope_per_deg']:+.4f}/° "
                 f"z {r['slope_z']:5.1f}  LR {r['lr_slope']:7.1f}")
+        log(f"    -> LR mediano dei controlli {ctrl['lr_slope'].median():.1f}, "
+            f"massimo {ctrl['lr_slope'].max():.1f}; sotto questo valore "
+            f"nessun risultato e' distinguibile dal rumore")
 
 
 if __name__ == "__main__":
