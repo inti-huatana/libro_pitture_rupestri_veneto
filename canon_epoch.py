@@ -67,6 +67,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from star_table import read_star_table, normalise_epoch
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -277,11 +279,10 @@ def main() -> None:
         log(f"Latitude table overridden for {len(ext)} cultures")
 
     log(f"Reading {args.trajectories} ...")
-    traj = pd.read_csv(args.trajectories,
-                       usecols=["epoch_kyr_from_year0", "HIP", "dec_deg",
-                                "ecl_lat_deg", "Vmag", "Bayer", "NAME"])
-    traj = traj.rename(columns={"epoch_kyr_from_year0": "epoch"})
-    traj["epoch"] = traj["epoch"].round(6)
+    traj = read_star_table(args.trajectories,
+                           ["epoch_kyr_from_year0", "HIP", "dec_deg",
+                            "ecl_lat_deg", "Vmag", "Bayer", "NAME"])
+    traj = normalise_epoch(traj)
     log(f"  {len(traj):,} rows, {traj['HIP'].nunique()} stars")
 
     # One label per star, for naming whichever one binds an interval edge.

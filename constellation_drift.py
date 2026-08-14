@@ -70,6 +70,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from star_table import read_star_table, normalise_epoch
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -334,13 +336,19 @@ def main() -> None:
     (outdir / "figure").mkdir(parents=True, exist_ok=True)
 
     log(f"Reading {args.trajectories} ...")
-    traj = pd.read_csv(args.trajectories, low_memory=False)
-    if "epoch_kyr_from_year0" in traj.columns:
-        traj = traj.rename(columns={"epoch_kyr_from_year0": "epoch"})
-    elif "epoch_kyr" in traj.columns:
-        traj = traj.rename(columns={"epoch_kyr": "epoch"})
-    traj["epoch"] = traj["epoch"].round(6)
+    # Only the columns this program touches, and through the cache: the file
+    # carries two dozen and parsing the rest costs time and memory for nothing.
+    wanted = ["HIP", "ra_deg", "dec_deg", "distance_pc", "Vmag", "NAME", "Bayer"]
+    probe = pd.read_csv(args.trajectories, nrows=0).columns   # header only
+    epoch_col = ("epoch_kyr_from_year0" if "epoch_kyr_from_year0" in probe
+                 else "epoch_kyr")
+    traj = read_star_table(args.trajectories, [epoch_col] + wanted)
+    traj = normalise_epoch(traj)
     traj = traj.drop_duplicates(["HIP", "epoch"])
+    if "lat_deg" in probe:
+        log("  NOTA: questo file ha una riga per latitudine; le colonne usate "
+            "qui non dipendono dalla latitudine, quindi trajectories.csv "
+            "contiene lo stesso e con 27 volte meno righe.")
 
     ra_w = traj.pivot(index="epoch", columns="HIP", values="ra_deg").sort_index()
     dec_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
