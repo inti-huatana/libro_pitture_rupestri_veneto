@@ -148,12 +148,23 @@ def plot_band(culture, epochs, lat_grid, n_unusable, n_missed, lat_nom,
     not added, because they do not carry the same weight -- a named star below
     the horizon is impossible, an unnamed bright one merely unrecorded.
     """
-    # The third panel is the maximum of the two, not their product: a product
-    # vanishes as soon as either factor does, so it would light up the far south
-    # where every named star is up but thirty bright ones went unrecorded. The
-    # maximum is the arithmetic form of the conjunction, since max(a,b) <= k
-    # holds exactly when both do, and it needs no relative weight.
-    worst = np.maximum(n_unusable, n_missed)
+    # The third panel combines the two, and the operator is a maximum rather
+    # than a product: a product vanishes as soon as either factor does, so it
+    # would light up the far south where every named star is up but thirty
+    # bright ones went unrecorded. The maximum is the arithmetic form of the
+    # conjunction, since max(a,b) <= k holds exactly when both a <= k and
+    # b <= k, and it needs no relative weight between them.
+    #
+    # It is taken on the excess over each map's own minimum, not on the raw
+    # counts, because the two have different floors. Unusable stars reach zero
+    # at some latitude for nearly every culture, while omissions need not: a
+    # canon may legitimately leave four bright stars unrecorded everywhere, and
+    # a contaminated one never gets its unusable count below thirty. A single
+    # level on the raw counts would then ask both to be zero at once, leaving
+    # the panel empty for half the sample. On the excess, the zero contour is
+    # exactly the region where both counts sit at their own best.
+    excess = np.maximum(n_unusable - n_unusable.min(),
+                        n_missed - n_missed.min())
 
     fig, axes = plt.subplots(1, 3, figsize=(20, 6), sharey=True)
 
@@ -163,12 +174,14 @@ def plot_band(culture, epochs, lat_grid, n_unusable, n_missed, lat_nom,
         (axes[1], n_missed,
          f"brillanti (V<{v_bright:.1f}) visibili ma non nominate",
          "stelle non nominate"),
-        (axes[2], worst,
-         "il peggiore dei due (dove e' basso, entrambi lo sono)",
-         "max dei due conteggi"),
+        (axes[2], excess,
+         f"entrambi al proprio minimo (min {n_unusable.min()} e "
+         f"{n_missed.min()}): il contorno 0 e' la regione cercata",
+         "eccesso sul minimo di ciascuna"),
     ):
-        mesh = ax.pcolormesh(epochs, lat_grid, np.clip(data, 0, 20).T,
-                             cmap="inferno_r", shading="auto", vmin=0, vmax=20)
+        vmax = 20 if data is not excess else 8
+        mesh = ax.pcolormesh(epochs, lat_grid, np.clip(data, 0, vmax).T,
+                             cmap="inferno_r", shading="auto", vmin=0, vmax=vmax)
         fig.colorbar(mesh, ax=ax, label=cap)
         levels = [l for l in LEVELS if (data <= l).any() and (data > l).any()]
         if levels:
@@ -184,8 +197,7 @@ def plot_band(culture, epochs, lat_grid, n_unusable, n_missed, lat_nom,
         ax.legend(loc="upper right", fontsize=7)
 
     axes[0].set_ylabel("Latitudine dell'osservatore [°]")
-    fig.suptitle(f"{culture} — i due vincoli; la cultura sta dove entrambi "
-                 f"sono bassi", fontsize=12)
+    fig.suptitle(f"{culture} — i due vincoli e la loro congiunzione", fontsize=12)
     fig.tight_layout()
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
