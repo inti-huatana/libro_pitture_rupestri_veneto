@@ -23,9 +23,11 @@ figure.
 
 That fall-off is fitted as a logistic regression of canon membership on
 
-    v = max(h, 0)          altitude above the horizon, zero when the star
-                           never rises, since below the horizon there are no
-                           degrees of invisibility to distinguish
+    v = -extinction        minus the atmospheric extinction suffered at
+                           culmination, in magnitudes: about 0.2 at the zenith,
+                           0.4 at thirty degrees, 0.8 at fifteen, 2 at five and
+                           7.6 at the horizon, held at the horizon value for a
+                           star that never rises
 
     V                      apparent magnitude at that epoch, carried as a
                            control: brighter stars are likelier to be named for
@@ -33,6 +35,16 @@ That fall-off is fitted as a logistic regression of canon membership on
                            without it that preference would leak into the slope
 
     logit p(in canon) = a + b*v + c*V
+
+Extinction rather than altitude, because altitude is largest where the observer's
+latitude equals the star's declination: a regression linear in it follows the
+bulk of the canon and settles on wherever the canon is concentrated in
+declination instead of wherever it was watched from. That put the fitted
+latitudes about ten degrees south of the truth for every large canon, and left
+them right only for small ones whose centroid happens to lie near their own
+latitude. Extinction is flat to within 0.2 mag across the whole sky above thirty
+degrees and spans six magnitudes in the last ten, so it cannot be pulled by the
+bulk and responds only where a horizon can express itself.
 
 and the quantity of interest is b, the strength of the altitude effect. A real
 horizon gives b > 0; b = 0 says the canon carries no information about where it
@@ -190,6 +202,37 @@ def log(msg: str) -> None:
 # ---------------------------------------------------------------------------
 # Logistic regression
 # ---------------------------------------------------------------------------
+def visibility_covariate(h: np.ndarray, k: float) -> np.ndarray:
+    """Minus the atmospheric extinction at culmination, in magnitudes.
+
+    Altitude itself is the wrong covariate. It is largest where the observer's
+    latitude equals the star's declination, so a regression linear in it is
+    driven by the bulk of the canon and settles wherever the canon is
+    concentrated in declination rather than wherever it was watched from. The
+    measured latitudes came out about ten degrees low for exactly that reason,
+    and correctly only for small canons whose centroid happens to sit near their
+    own latitude.
+
+    Extinction isolates the information that actually bears on the horizon. It
+    is nearly flat above thirty degrees, so it makes no distinction among stars
+    high in the sky and cannot be pulled by where the canon sits, and it rises
+    steeply below ten, which is the only place a horizon can express itself:
+    about 0.4 mag at 30 degrees, 0.8 at 15, 2 at 5 and 7.6 at the horizon.
+
+    Airmass follows Kasten and Young (1989), which stays finite at the horizon
+    instead of diverging like the plane-parallel 1/sin(h). A star that never
+    rises is held at the horizon value: below it there are no degrees of
+    invisibility to distinguish.
+
+    k only scales the coefficient, so it fixes the units in which the effect is
+    reported and cannot change which latitude or epoch fits best.
+    """
+    ha = np.maximum(h, 0.0)
+    airmass = 1.0 / (np.sin(np.radians(ha))
+                     + 0.50572 * np.power(ha + 6.07995, -1.6364))
+    return -k * airmass
+
+
 def logistic_loglik(X: np.ndarray, y: np.ndarray, beta: np.ndarray) -> float:
     eta = X @ beta
     # log(1 + exp(eta)) via logaddexp, stable for large |eta|.
@@ -289,7 +332,7 @@ def null_fit(vmag: np.ndarray, y: np.ndarray, ridge: float) -> float:
 
 
 def surface(dec: np.ndarray, vmag: np.ndarray, y: np.ndarray,
-            lat_grid: np.ndarray, ridge: float):
+            lat_grid: np.ndarray, ridge: float, k_ext: float = 0.2):
     """Profile log-likelihood and fitted coefficients over (epoch, latitude)."""
     n_epoch = dec.shape[0]
     n_lat = lat_grid.size
@@ -304,7 +347,7 @@ def surface(dec: np.ndarray, vmag: np.ndarray, y: np.ndarray,
         di = dec[i]
         vi = vmag[i]
         for j, phi in enumerate(lat_grid):
-            v = np.maximum(90.0 - np.abs(phi - di), 0.0)
+            v = visibility_covariate(90.0 - np.abs(phi - di), k_ext)
             b, se, a, c, value = cell_fit(v, vi, y, ridge)
             ll[i, j] = value
             slope[i, j] = b
@@ -416,6 +459,10 @@ def main() -> None:
     p.add_argument("--ridge", type=float, default=1e-3,
                    help="ridge penalty keeping the slope finite under perfect "
                         "separation")
+    p.add_argument("--extinction-k", type=float, default=0.2,
+                   help="extinction per airmass in magnitudes, a dark-site V "
+                        "value; it only sets the units of the fitted slope and "
+                        "cannot change which latitude or epoch fits best")
     p.add_argument("--present-kyr", type=float, default=2.0,
                    help="epoch taken as the present, kyr from year 0")
     p.add_argument("--min-stars", type=int, default=10,
@@ -472,6 +519,10 @@ def main() -> None:
     i_present = int(np.argmin(np.abs(epochs - present_epoch)))
     log(f"Present taken as epoch {present_epoch:+.1f} kyr")
 
+    epoch_threshold = max(CHI2_1DOF_95, 2.0 * np.log(epochs.size))
+    log(f"Epoch test threshold {epoch_threshold:.1f} "
+        f"(search over {epochs.size} epochs, not 3.84)")
+
     members = pd.read_csv(Path(args.skycultures) / "members.csv")
     if args.culture:
         members = members[members["culture"] == args.culture]
@@ -503,7 +554,7 @@ def main() -> None:
 
         ll_null = null_fit(mag_all[i_present], y, args.ridge)
         ll, slope, slope_se, inter, cmag = surface(
-            dec_all, mag_all, y, lat_grid, args.ridge)
+            dec_all, mag_all, y, lat_grid, args.ridge, args.extinction_k)
 
         pos = argmax_positive_slope(ll, slope)
         if pos is None:
@@ -540,8 +591,10 @@ def main() -> None:
         def logistic(x):
             return 1.0 / (1.0 + np.exp(-np.clip(x, -500.0, 500.0)))
 
-        p_hor = float(logistic(a + c * vbar))
-        p_45 = float(logistic(a + 45.0 * b + c * vbar))
+        v_hor = float(visibility_covariate(np.array([0.0]), args.extinction_k)[0])
+        v_high = float(visibility_covariate(np.array([60.0]), args.extinction_k)[0])
+        p_hor = float(logistic(a + b * v_hor + c * vbar))
+        p_45 = float(logistic(a + b * v_high + c * vbar))
         # A fit predicting a negligible naming probability at every altitude has
         # separated: no canon star lies low enough to contradict the effect, the
         # coefficient runs away and only the ridge holds it. It happens on small
@@ -587,8 +640,18 @@ def main() -> None:
             lr_known = 2.0 * (prof[i_present] - ll_null)
             ib = int(np.argmax(prof))
             lr_present = 2.0 * (prof[ib] - prof[i_present])
-            excluded = bool(lr_present > CHI2_1DOF_95)
+            # Comparing the present against the best of every scanned epoch is
+            # itself a search, so the one-degree-of-freedom threshold is too
+            # lenient by the same argument that applies to the surface: the
+            # largest of n draws sits near 2*ln(n).
+            excluded = bool(lr_present > epoch_threshold)
+            # An epoch sitting on either end of the scanned range means the
+            # profile never turned over inside it, so the epoch is bounded but
+            # not measured, and the value printed is the edge of the window
+            # rather than a fit.
+            epoch_at_edge = bool(ib == 0 or ib == epochs.size - 1)
             row.update(best_epoch_at_known_kyr=float(epochs[ib]),
+                       epoch_at_scan_edge=epoch_at_edge,
                        slope_at_known=float(slope[i_present, jk]),
                        lr_slope_at_known=float(lr_known),
                        lr_present=float(lr_present),
@@ -598,7 +661,8 @@ def main() -> None:
                        informative=bool(excluded
                                         and slope[i_present, jk] > 0.0
                                         and lr_known > CHI2_1DOF_95
-                                        and not separated),
+                                        and not separated
+                                        and not epoch_at_edge),
                        notes="")
 
         if args.permutations > 0:
