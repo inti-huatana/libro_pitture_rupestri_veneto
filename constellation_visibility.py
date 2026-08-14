@@ -333,6 +333,34 @@ def write_surface_csv(path: Path, epochs, lat_grid, ll, hmin, cnt,
     return len(df)
 
 
+def plot_profile(culture: str, epochs, ll, hmin, lat_known,
+                 present_epoch, path: Path) -> None:
+    """Epoch profile at a pinned latitude, with the horizon fitted along it."""
+    dev = 2.0 * (np.nanmax(ll) - ll)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
+
+    ax1.plot(epochs, dev, lw=1.4)
+    ax1.axhline(CHI2_1DOF_95, color="crimson", lw=1.0, ls="--",
+                label="soglia 95% (1 g.d.l.)")
+    ax1.axvline(present_epoch, color="k", lw=1.0, ls=":", label="presente")
+    ax1.set_ylabel(r"$2\,\Delta\log L$ dal massimo")
+    ax1.set_ylim(bottom=0)
+    ax1.set_title(f"{culture} — latitudine fissata a {lat_known:+.1f}°")
+    ax1.legend(fontsize=8)
+    ax1.grid(alpha=0.3)
+
+    ax2.plot(epochs, hmin, lw=1.4, color="darkgreen")
+    ax2.axvline(present_epoch, color="k", lw=1.0, ls=":")
+    ax2.set_xlabel("Epoca [kyr dall'anno 0]")
+    ax2.set_ylabel("Orizzonte pratico stimato [°]")
+    ax2.grid(alpha=0.3)
+
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_culture(culture: str, epochs, lat_grid, ll, lat_known,
                  present_epoch, best, path: Path) -> None:
     dev = 2.0 * (np.nanmax(ll) - ll)
@@ -389,6 +417,17 @@ def main() -> None:
                         "15 deg altitude and negligible above it")
     p.add_argument("--hmin-step", type=float, default=0.5,
                    help="resolution of the fitted practical horizon, deg")
+    p.add_argument("--pin-latitude", action="store_true",
+                   help="hold the latitude at its known value and fit only the "
+                        "epoch and the practical horizon; this is what breaks "
+                        "the phi/h_min degeneracy, and the ensemble of fitted "
+                        "h_min it returns is the measured practical horizon. "
+                        "Cultures without a known latitude are skipped.")
+    p.add_argument("--h-min-fixed", type=float, default=None,
+                   help="hold the practical horizon at this value and fit the "
+                        "latitude and the epoch freely; use the ensemble median "
+                        "returned by --pin-latitude, so the value comes from the "
+                        "data rather than from a guess")
     p.add_argument("--present-kyr", type=float, default=2.0,
                    help="epoch taken as the present, kyr from year 0")
     p.add_argument("--min-stars", type=int, default=10,
@@ -434,10 +473,16 @@ def main() -> None:
     # Latitudes are limited to the inhabited range: outside it the fit has no
     # subject, and the far south in particular is where the mirror solutions of
     # a northern canon used to pile up.
-    lat_grid = np.arange(args.lat_min, args.lat_max + 1e-9, args.lat_step)
-    hmin_grid = np.arange(0.0, args.hmin_max + 1e-9, args.hmin_step)
-    log(f"Latitudes: {lat_grid.size} from {lat_grid[0]:+.0f} to {lat_grid[-1]:+.0f} "
-        f"| cutoff grid: {hmin_grid.size} (0 .. {args.hmin_max:.0f}°)")
+    lat_grid_full = np.arange(args.lat_min, args.lat_max + 1e-9, args.lat_step)
+    if args.h_min_fixed is not None:
+        hmin_grid = np.array([args.h_min_fixed])
+        log(f"Practical horizon held at {args.h_min_fixed:.1f}°")
+    else:
+        hmin_grid = np.arange(0.0, args.hmin_max + 1e-9, args.hmin_step)
+    log(f"Latitudes: {lat_grid_full.size} from {lat_grid_full[0]:+.0f} to "
+        f"{lat_grid_full[-1]:+.0f} | cutoff grid: {hmin_grid.size}")
+    if args.pin_latitude:
+        log("Latitude pinned to the known value: fitting epoch and horizon only")
 
     present_epoch = float(epochs[np.argmin(np.abs(epochs - args.present_kyr))])
     i_present = int(np.argmin(np.abs(epochs - present_epoch)))
@@ -462,6 +507,16 @@ def main() -> None:
             log(f"  {culture:28s} SKIP: {n_present} stelle nel catalogo")
             continue
 
+        lat_known = latitudes.get(culture)
+        if args.pin_latitude:
+            if lat_known is None:
+                log(f"  {culture:28s} SKIP: latitudine non nota, richiesta da "
+                    f"--pin-latitude")
+                continue
+            lat_grid = np.array([lat_known])
+        else:
+            lat_grid = lat_grid_full
+
         dec_canon = dec_all[:, mask]
         dec_other = dec_all[:, ~mask]
 
@@ -480,11 +535,14 @@ def main() -> None:
         ep_lo = float(epochs[inside.any(axis=1)].min())
         ep_hi = float(epochs[inside.any(axis=1)].max())
 
-        lat_known = latitudes.get(culture)
         write_surface_csv(outdir / "surfaces" / f"{culture}.csv",
                           epochs, lat_grid, ll, hmin, cnt, float(ll[bi, bj]))
-        plot_culture(culture, epochs, lat_grid, ll, lat_known,
-                     present_epoch, best, outdir / "surfaces" / f"{culture}.pdf")
+        if lat_grid.size > 1:
+            plot_culture(culture, epochs, lat_grid, ll, lat_known,
+                         present_epoch, best, outdir / "surfaces" / f"{culture}.pdf")
+        else:
+            plot_profile(culture, epochs, ll[:, 0], hmin[:, 0], lat_known,
+                         present_epoch, outdir / "surfaces" / f"{culture}.pdf")
 
         row = {
             "culture": culture,
@@ -574,13 +632,28 @@ def main() -> None:
         f"{np.nanmedian(out['fitted_h_min_deg']):.1f}°, "
         f"intervallo [{np.nanmin(out['fitted_h_min_deg']):.1f}, "
         f"{np.nanmax(out['fitted_h_min_deg']):.1f}]°")
-    # h_min pinned at its bound would mean the degeneracy is still being
-    # absorbed there rather than the horizon being measured.
-    n_rail = int((out["fitted_h_min_deg"] >= args.hmin_max - 1e-9).sum())
-    if n_rail:
-        log(f"  ATTENZIONE: {n_rail} culture con h_min al limite "
-            f"({args.hmin_max:.0f}°): latitudine e orizzonte restano degeneri, "
-            f"usare phi_minus_hmin")
+    if args.pin_latitude:
+        # This is the run the degeneracy does not affect, so its ensemble of
+        # fitted horizons is the number to carry into a free-latitude run.
+        med = float(np.nanmedian(out["fitted_h_min_deg"]))
+        log("")
+        log(f"  Orizzonte pratico misurato a latitudine fissata: "
+            f"mediana {med:.1f}°, "
+            f"quartili [{np.nanpercentile(out['fitted_h_min_deg'], 25):.1f}, "
+            f"{np.nanpercentile(out['fitted_h_min_deg'], 75):.1f}]°")
+        log(f"  Passo successivo: rilanciare senza --pin-latitude e con "
+            f"--h-min-fixed {med:.1f}")
+    elif args.h_min_fixed is None:
+        # h_min pinned at its bound means the degeneracy is still being absorbed
+        # there rather than the horizon being measured.
+        n_rail = int((out["fitted_h_min_deg"] >= args.hmin_max - 1e-9).sum())
+        if n_rail:
+            log(f"  ATTENZIONE: {n_rail} culture con h_min al limite "
+                f"({args.hmin_max:.0f}°): latitudine e orizzonte restano "
+                f"degeneri. Abbassare --hmin-max non serve, h_min si "
+                f"incollerebbe al nuovo limite; usare phi_minus_hmin, oppure "
+                f"stimare l'orizzonte con --pin-latitude e riportarlo qui con "
+                f"--h-min-fixed")
 
 
 if __name__ == "__main__":
