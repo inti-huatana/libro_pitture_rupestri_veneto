@@ -72,6 +72,53 @@ import matplotlib.pyplot as plt
 # Levels at which the crossing epoch is reported, in per cent of shape change.
 CROSS_LEVELS = (5.0, 10.0, 25.0)
 
+# The sky cultures spell the IAU figures out in English. Astronomy names them in
+# Latin, so the English is translated back rather than shown.
+LATIN_NAMES: dict[str, str] = {
+    "Andromeda": "Andromeda", "Air Pump": "Antlia", "Bird of Paradise": "Apus",
+    "Water Bearer": "Aquarius", "Eagle": "Aquila", "Altar": "Ara",
+    "Ram": "Aries", "Charioteer": "Auriga", "Herdsman": "Bootes",
+    "Chisel": "Caelum", "Giraffe": "Camelopardalis", "Crab": "Cancer",
+    "Hunting Dogs": "Canes Venatici", "Greater Dog": "Canis Major",
+    "Lesser Dog": "Canis Minor", "Sea Goat": "Capricornus",
+    "Capricornus": "Capricornus", "Keel": "Carina", "Cassiopeia": "Cassiopeia",
+    "Centaur": "Centaurus", "Cepheus": "Cepheus", "Sea Monster": "Cetus",
+    "Chameleon": "Chamaeleon", "Compass": "Circinus", "Dove": "Columba",
+    "Berenice's Hair": "Coma Berenices", "Southern Crown": "Corona Australis",
+    "Northern Crown": "Corona Borealis", "Crow": "Corvus", "Cup": "Crater",
+    "Southern Cross": "Crux", "Swan": "Cygnus", "Dolphin": "Delphinus",
+    "Swordfish": "Dorado", "Dragon": "Draco", "Little Horse": "Equuleus",
+    "Eridanus": "Eridanus", "Furnace": "Fornax", "Twins": "Gemini",
+    "Crane": "Grus", "Hercules": "Hercules", "Pendulum Clock": "Horologium",
+    "Water Snake": "Hydra", "Female Water Snake": "Hydrus",
+    "Indian": "Indus", "Lizard": "Lacerta", "Lion": "Leo",
+    "Lesser Lion": "Leo Minor", "Hare": "Lepus", "Scales": "Libra",
+    "Wolf": "Lupus", "Lynx": "Lynx", "Lyre": "Lyra", "Table Mountain": "Mensa",
+    "Microscope": "Microscopium", "Unicorn": "Monoceros", "Fly": "Musca",
+    "Set Square": "Norma", "Octant": "Octans", "Serpent Bearer": "Ophiuchus",
+    "Hunter": "Orion", "Peacock": "Pavo", "Winged Horse": "Pegasus",
+    "Hero": "Perseus", "Phoenix": "Phoenix", "Easel": "Pictor",
+    "Fish": "Pisces", "Southern Fish": "Piscis Austrinus", "Stern": "Puppis",
+    "Compass Box": "Pyxis", "Net": "Reticulum", "Arrow": "Sagitta",
+    "Archer": "Sagittarius", "Scorpion": "Scorpius", "Sculptor": "Sculptor",
+    "Shield": "Scutum", "Serpent": "Serpens", "Sextant": "Sextans",
+    "Bull": "Taurus", "Telescope": "Telescopium", "Triangle": "Triangulum",
+    "Southern Triangle": "Triangulum Australe", "Toucan": "Tucana",
+    "Great Bear": "Ursa Major", "Little Bear": "Ursa Minor", "Sails": "Vela",
+    "Maiden": "Virgo", "Flying Fish": "Volans", "Fox": "Vulpecula",
+}
+
+
+def latin_name(english: str, native: str, cid: str) -> str:
+    """Latin name of a figure, preferring the culture's own if it gives one."""
+    nat = str(native).strip()
+    if nat and nat.lower() != "nan":
+        return nat
+    eng = str(english).strip()
+    if eng in LATIN_NAMES:
+        return LATIN_NAMES[eng]
+    return eng if eng and eng.lower() != "nan" else cid
+
 
 def log(msg: str) -> None:
     print(f"[{datetime.now(UTC).strftime('%H:%M:%S')}] {msg}", flush=True)
@@ -130,6 +177,106 @@ def worst_star(ra, dec, idx, i_ref, i_far):
     return best, best_drop
 
 
+def project(ra_deg: np.ndarray, dec_deg: np.ndarray):
+    """Orthographic projection onto the plane tangent at the figure's centroid.
+
+    Orthographic rather than gnomonic because a gnomonic projection diverges as
+    a member approaches ninety degrees from the centre, and figures like
+    Eridanus are long enough for that to matter. It compresses the outskirts,
+    but it does so identically in every panel, so the comparison between epochs
+    stays honest.
+    """
+    ra, dec = np.radians(ra_deg), np.radians(dec_deg)
+    v = np.column_stack((np.cos(dec) * np.cos(ra),
+                         np.cos(dec) * np.sin(ra),
+                         np.sin(dec)))
+    c = v.mean(axis=0)
+    c /= np.linalg.norm(c)
+    pole = np.array([0.0, 0.0, 1.0])
+    east = np.cross(pole, c)
+    if np.linalg.norm(east) < 1e-8:            # centroid at a celestial pole
+        east = np.cross(np.array([1.0, 0.0, 0.0]), c)
+    east /= np.linalg.norm(east)
+    north = np.cross(c, east)
+    return np.column_stack((np.degrees(v @ east), np.degrees(v @ north)))
+
+
+def procrustes(P: np.ndarray, Q: np.ndarray) -> np.ndarray:
+    """Bring P onto Q by translation, rotation and uniform scale.
+
+    The distortion measured elsewhere in this program is what survives removing
+    the median scale, so the drawings remove scale too, and rotation with it:
+    otherwise precession would spin every panel and hide the only thing worth
+    looking at. Reflection is excluded, a mirrored figure being a different
+    figure.
+    """
+    Pc = P - P.mean(axis=0)
+    Qc = Q - Q.mean(axis=0)
+    U, S, Vt = np.linalg.svd(Pc.T @ Qc)
+    d = np.sign(np.linalg.det(U @ Vt))
+    R = U @ np.diag([1.0, d]) @ Vt
+    denom = float((Pc ** 2).sum())
+    s = (S[0] + d * S[1]) / denom if denom > 0 else 1.0
+    return s * (Pc @ R)
+
+
+def star_size(vmag: np.ndarray) -> np.ndarray:
+    return np.clip(220.0 * 10 ** (-0.4 * (vmag - 1.0)), 6.0, 340.0)
+
+
+def draw_figure_pdf(name, epochs, epochs_sel, ra, dec, mag, idx, seg_pairs,
+                    i_ref, per_page, path: Path) -> None:
+    """One page of panels per group of epochs, oldest first.
+
+    Every panel is drawn on the same axes and aligned to the reference epoch, so
+    what changes between panels is shape and nothing else.
+    """
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    ref_xy = project(ra[i_ref, idx], dec[i_ref, idx])
+    ref_xy = ref_xy - ref_xy.mean(axis=0)
+
+    frames = []
+    for i in epochs_sel:
+        xy = procrustes(project(ra[i, idx], dec[i, idx]), ref_xy)
+        frames.append(xy)
+    lim = 1.15 * max(np.abs(np.concatenate(frames)).max(), 1e-3)
+
+    n_pages = int(np.ceil(len(epochs_sel) / per_page))
+    ncol = 2
+    nrow = int(np.ceil(per_page / ncol))
+
+    with PdfPages(path) as pdf:
+        for pg in range(n_pages):
+            fig, axes = plt.subplots(nrow, ncol, figsize=(9.5, 9.5 * nrow / ncol))
+            axes = np.atleast_1d(axes).ravel()
+            for k in range(per_page):
+                j = pg * per_page + k
+                ax = axes[k]
+                if j >= len(epochs_sel):
+                    ax.axis("off")
+                    continue
+                i = epochs_sel[j]
+                xy = frames[j]
+                for a, b in seg_pairs:
+                    ax.plot(xy[[a, b], 0], xy[[a, b], 1],
+                            color="0.55", lw=1.0, zorder=1)
+                ax.scatter(xy[:, 0], xy[:, 1], s=star_size(mag[i, idx]),
+                           c="k", zorder=2)
+                ax.set_xlim(-lim, lim)
+                ax.set_ylim(-lim, lim)
+                ax.set_aspect("equal")
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.set_title(f"{epochs[i]:+.0f} kyr", fontsize=11)
+            fig.suptitle(f"{name} — pagina {pg + 1} di {n_pages}, "
+                         f"dalla piu' antica; scala e rotazione rimosse",
+                         fontsize=12)
+            fig.tight_layout()
+            pdf.savefig(fig)
+            plt.close(fig)
+
+
 def main() -> None:
     p = argparse.ArgumentParser(
         description="Shape deformation of constellations under proper motion.")
@@ -147,10 +294,17 @@ def main() -> None:
     p.add_argument("--min-stars", type=int, default=4,
                    help="skip figures with fewer catalogued stars; three stars "
                         "give only three separations and no leave-one-out")
+    p.add_argument("--panel-step", type=float, default=10.0,
+                   help="spacing between drawn panels, kyr")
+    p.add_argument("--panels-per-page", type=int, default=4)
+    p.add_argument("--pages", type=int, default=5)
+    p.add_argument("--no-figures", action="store_true",
+                   help="skip the per-constellation drawings")
     args = p.parse_args()
 
     outdir = Path(args.outdir)
     (outdir / "curves").mkdir(parents=True, exist_ok=True)
+    (outdir / "figure").mkdir(parents=True, exist_ok=True)
 
     log(f"Reading {args.trajectories} ...")
     traj = pd.read_csv(args.trajectories, low_memory=False)
@@ -164,6 +318,8 @@ def main() -> None:
     ra_w = traj.pivot(index="epoch", columns="HIP", values="ra_deg").sort_index()
     dec_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
     dist_w = traj.pivot(index="epoch", columns="HIP", values="distance_pc").sort_index()
+    mag_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
+    mag = mag_w.to_numpy(dtype=float)
     epochs = ra_w.index.to_numpy(dtype=float)
     all_hips = ra_w.columns.to_numpy()
     ra = ra_w.to_numpy(dtype=float)
@@ -187,12 +343,25 @@ def main() -> None:
 
     members = pd.read_csv(Path(args.skycultures) / "members.csv")
     cons = pd.read_csv(Path(args.skycultures) / "constellations.csv")
+    segs = pd.read_csv(Path(args.skycultures) / "segments.csv")
     sub = members[members["culture"] == args.culture]
     if sub.empty:
         avail = ", ".join(sorted(members["culture"].unique())[:12])
         raise SystemExit(f"Culture '{args.culture}' not found. Available: {avail} ...")
-    names = dict(zip(cons.loc[cons["culture"] == args.culture, "constellation_id"],
-                     cons.loc[cons["culture"] == args.culture, "name_english"]))
+    cc = cons[cons["culture"] == args.culture]
+    names = {r["constellation_id"]: latin_name(r.get("name_english", ""),
+                                               r.get("name_native", ""),
+                                               r["constellation_id"])
+             for _, r in cc.iterrows()}
+    segs = segs[segs["culture"] == args.culture]
+
+    # Panels run back from the reference at a fixed spacing, oldest drawn first.
+    n_panels = args.panels_per_page * args.pages
+    want = epochs[i_ref] - args.panel_step * np.arange(n_panels)
+    panel_idx = sorted({int(np.argmin(np.abs(epochs - t)))
+                        for t in want if t >= epochs.min() - 1e-9})
+    log(f"Pannelli: {len(panel_idx)} da {epochs[panel_idx[0]]:+.0f} a "
+        f"{epochs[panel_idx[-1]]:+.0f} kyr, {args.panels_per_page} per pagina")
 
     log(f"Culture: {args.culture} | "
         f"{sub['constellation_id'].nunique()} figures")
@@ -221,10 +390,23 @@ def main() -> None:
         driver = labels.get(all_hips[idx[s]]) if s is not None else ""
         driver_pc = float(dpc[i_ref, idx[s]]) if s is not None else np.nan
 
+        nome = names.get(cid, cid)
+        if not args.no_figures:
+            pos = {int(h): k for k, h in enumerate(all_hips[idx])}
+            sp = segs[segs["constellation_id"] == cid]
+            pairs = [(pos[int(a)], pos[int(b)])
+                     for a, b in zip(sp["HIP_a"], sp["HIP_b"])
+                     if int(a) in pos and int(b) in pos]
+            safe = "".join(ch if ch.isalnum() or ch in "-_" else "_"
+                           for ch in nome)
+            draw_figure_pdf(nome, epochs, panel_idx, ra, dec, mag, idx, pairs,
+                            i_ref, args.panels_per_page,
+                            outdir / "figure" / f"{safe}.pdf")
+
         row = {
             "culture": args.culture,
             "constellation_id": cid,
-            "name": names.get(cid, ""),
+            "name": nome,
             "n_stars": idx.size,
             "n_stars_figure": len(hips),
             "mean_sep_ref_deg": float(sep[i_ref].mean()),
@@ -267,30 +449,36 @@ def main() -> None:
         log(f"    (negativa e forte = la vicinanza di un membro governa la "
             f"deformazione)")
 
-    fig, ax = plt.subplots(figsize=(11, 7))
-    for _, r in out.iterrows():
-        c = pd.read_csv(outdir / "curves" /
-                        f"{r['constellation_id'].replace(' ', '_')}.csv")
-        ax.plot(c["epoch_kyr"], c["distortion_pct"], lw=0.8, alpha=0.5)
-    for _, r in pd.concat([out.head(3), out.tail(3)]).iterrows():
-        c = pd.read_csv(outdir / "curves" /
-                        f"{r['constellation_id'].replace(' ', '_')}.csv")
-        ax.plot(c["epoch_kyr"], c["distortion_pct"], lw=2.0,
-                label=f"{r['name']} ({r['distortion_far_pct']:.0f}%)")
+    # A ranked bar chart rather than forty overlaid curves: the question the
+    # summary answers is which figures survive and which do not, and one line
+    # per constellation made that unreadable.
+    fig, ax = plt.subplots(figsize=(9, max(6, 0.26 * len(out))))
+    y = np.arange(len(out))
+    col = plt.cm.viridis(np.clip(np.log10(out["nearest_pc"]) / 2.6, 0, 1))
+    ax.barh(y, out["distortion_far_pct"], color=col)
+    ax.set_yticks(y)
+    ax.set_yticklabels(out["name"], fontsize=8)
+    ax.invert_yaxis()
     for lv in CROSS_LEVELS:
-        ax.axhline(lv, color="k", lw=0.6, ls=":")
-    ax.set_yscale("symlog", linthresh=1.0)
-    ax.set_xlabel("Epoca [kyr dall'anno 0]")
-    ax.set_ylabel("Deformazione di forma [%]")
-    ax.set_title(f"{args.culture} — alterazione delle figure per moto proprio")
-    ax.legend(fontsize=8, ncol=2)
-    ax.grid(alpha=0.3)
+        ax.axvline(lv, color="k", lw=0.7, ls=":")
+        ax.text(lv, -0.8, f"{lv:.0f}%", fontsize=7, ha="center")
+    ax.set_xscale("log")
+    ax.set_xlabel(f"Deformazione di forma a {epochs[i_far]:+.0f} kyr [%]  "
+                  f"(scala logaritmica)")
+    ax.set_title(f"{args.culture} — quali figure reggono il moto proprio\n"
+                 f"colore = distanza del membro piu' vicino "
+                 f"(scuro = vicino, chiaro = lontano)", fontsize=11)
+    ax.grid(axis="x", alpha=0.3)
     fig.tight_layout()
-    fig.savefig(outdir / "drift.pdf", dpi=150, bbox_inches="tight")
+    fig.savefig(outdir / "classifica.pdf", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
     log("")
-    log(f"Written {outdir}/summary.csv ({len(out)} figure) e {outdir}/drift.pdf")
+    log(f"Written {outdir}/summary.csv ({len(out)} figure), "
+        f"{outdir}/classifica.pdf")
+    if not args.no_figures:
+        log(f"        {outdir}/figure/*.pdf  ({len(out)} costellazioni, "
+            f"{args.pages} pagine ciascuna)")
 
 
 if __name__ == "__main__":
