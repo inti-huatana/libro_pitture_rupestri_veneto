@@ -1,1 +1,11 @@
 readme
+
+---
+
+Astronomy code moved out (August 2026)
+--------------------------------------
+The prehistoric-astronomy programs now live in their own repository,
+inti-huatana/prehistoric-astronomy, together with a book of their own.
+Only stellar_calendar.py and stellar_calendar_latex.py stayed here,
+because they build this book's appendix tables and nothing else uses them.
+Both are self-contained: they import only numpy and pandas.
