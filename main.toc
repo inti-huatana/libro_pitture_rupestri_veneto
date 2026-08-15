@@ -1,0 +1,226 @@
+\xpginauxfiletrue 
+\selectlanguage *{italian}
+\contentsline {chapter}{Prefazione}{iii}{chapter*.1}%
+\contentsline {part}{I\hspace {1em}La domanda}{1}{part.1}%
+\contentsline {chapter}{\numberline {1}Quando la roccia tace}{3}{chapter.1}%
+\contentsline {chapter}{\numberline {2}Il territorio e le sue storie}{7}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Il territorio: geomorfologia e geologia di base}{7}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Storia climatica: dal Pleistocene all'età del Ferro}{11}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Storia ecologica: paesaggi e fauna in trasformazione}{14}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Storia umana}{19}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Paleolitico (500.000--11.000 anni prima dell'anno zero)}{19}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Mesolitico (11.700--7.500 anni prima dell'anno zero)}{21}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Neolitico ed Eneolitico (7.500--4.250 anni prima dell'anno zero)}{23}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.4}Età del Bronzo e del Ferro (4.250--0 anni prima dell'anno zero)}{26}{subsection.2.4.4}%
+\contentsline {section}{\numberline {2.5}Perché questo quadro conta per la domanda di questo libro}{28}{section.2.5}%
+\contentsline {part}{II\hspace {1em}Il quadro veneto}{31}{part.2}%
+\contentsline {chapter}{\numberline {3}Cosa si conosce davvero, in Veneto}{33}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Verona: la Lessinia, la Valpolicella, il Garda e la pianura}{34}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Paleolitico: la Lessinia come laboratorio}{34}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}La grotta di Fumane: arte figurativa a quarantamila anni}{35}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}Monte Baldo: la scoperta del 2026}{36}{subsection.3.1.3}%
+\contentsline {subsection}{\numberline {3.1.4}Il Monte Luppia e le incisioni del Benaco}{36}{subsection.3.1.4}%
+\contentsline {subsection}{\numberline {3.1.5}Età del bronzo: le palafitte del Garda e i villaggi d'altura}{37}{subsection.3.1.5}%
+\contentsline {subsection}{\numberline {3.1.6}Età del ferro: Oppeano e la Verona venetica}{38}{subsection.3.1.6}%
+\contentsline {subsection}{\numberline {3.1.7}Arte rupestre: il bilancio veronese}{38}{subsection.3.1.7}%
+\contentsline {section}{\numberline {3.2}Vicenza: i Berici, la pianura, l'Altopiano di Asiago e la Val d'Assa}{39}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}I Colli Berici: la sequenza più lunga, dalla comparsa dell'uomo moderno a oggi}{39}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}La pianura vicentina: il Dal Molin e i siti pedemontani}{40}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Il lago di Fimon: il palafitticolo neolitico vicentino}{41}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}L'Altopiano di Asiago e la Grotta di Ernesto}{41}{subsection.3.2.4}%
+\contentsline {subsection}{\numberline {3.2.5}La Val d'Assa: scoperta, dibattito e revisione}{42}{subsection.3.2.5}%
+\contentsline {subsection}{\numberline {3.2.6}Arte rupestre nel vicentino: un bilancio}{43}{subsection.3.2.6}%
+\contentsline {section}{\numberline {3.3}Padova: gli Euganei, la pianura e il distretto di Este}{44}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Paleolitico e Mesolitico: una presenza difficile da documentare}{44}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Neolitico: i villaggi della pianura}{45}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Eneolitico: le risorse degli Euganei}{45}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.4}Bronzo e Ferro: l'intensità della pianura}{45}{subsection.3.3.4}%
+\contentsline {subsection}{\numberline {3.3.5}Arte rupestre: assente come corpus}{46}{subsection.3.3.5}%
+\contentsline {section}{\numberline {3.4}Rovigo: il Polesine e la sua preistoria sommersa}{46}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Paleolitico e Mesolitico: assenza strutturale}{46}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Bronzo: Frattesina e il distretto metallurgico}{46}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Ferro e contatti adriatici}{47}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Arte rupestre: impossibile per ragioni geomorfologiche}{47}{subsection.3.4.4}%
+\contentsline {section}{\numberline {3.5}Venezia: la laguna come risultato, non come sfondo}{47}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Paleolitico e Mesolitico}{48}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Neolitico: Concordia Sagittaria}{48}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Bronzo: le piroghe del Brenta}{48}{subsection.3.5.3}%
+\contentsline {subsection}{\numberline {3.5.4}Ferro: Altino e i Veneti antichi}{48}{subsection.3.5.4}%
+\contentsline {subsection}{\numberline {3.5.5}Arte rupestre: strutturalmente impossibile}{49}{subsection.3.5.5}%
+\contentsline {section}{\numberline {3.6}Treviso: il Cansiglio, i laghi di Revine e la pedemontana}{49}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Il Cansiglio: trent'anni di ricerca sistematica}{49}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}I laghi di Revine: il palafitticolo trevigiano}{49}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}La pedemontana e le necropoli venetiche}{50}{subsection.3.6.3}%
+\contentsline {subsection}{\numberline {3.6.4}Arte rupestre: lacuna documentata}{50}{subsection.3.6.4}%
+\contentsline {section}{\numberline {3.7}Belluno: le Dolomiti e il Cadore}{50}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}I Ripari Villabruna: arte mobilière a 14.000 anni}{50}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}Monte Avena e il Paleolitico delle Vette}{51}{subsection.3.7.2}%
+\contentsline {subsection}{\numberline {3.7.3}Mondeval de Sora: la sepoltura castelnoviana}{51}{subsection.3.7.3}%
+\contentsline {subsection}{\numberline {3.7.4}Passo Giau: la seconda sepoltura mesolitica}{51}{subsection.3.7.4}%
+\contentsline {subsection}{\numberline {3.7.5}Il Comelico e la Val Visdende}{52}{subsection.3.7.5}%
+\contentsline {subsection}{\numberline {3.7.6}Il Cansiglio bellunese}{52}{subsection.3.7.6}%
+\contentsline {subsection}{\numberline {3.7.7}L'Agordino e lo Zoldano}{52}{subsection.3.7.7}%
+\contentsline {subsection}{\numberline {3.7.8}Arte rupestre nel Bellunese}{53}{subsection.3.7.8}%
+\contentsline {section}{\numberline {3.8}Il Veneto geografico esteso}{53}{section.3.8}%
+\contentsline {subsection}{\numberline {3.8.1}Nell'orbita di Verona: il Garda trentino e lombardo, le morene, Ala e Rovereto}{53}{subsection.3.8.1}%
+\contentsline {subsection}{\numberline {3.8.2}Nell'orbita di Vicenza e Belluno: Valsugana, Lagorai, Primiero e le Pale}{55}{subsection.3.8.2}%
+\contentsline {subsection}{\numberline {3.8.3}Nell'orbita di Belluno: le Dolomiti ladine e la Val Pusteria}{56}{subsection.3.8.3}%
+\contentsline {subsection}{\numberline {3.8.4}Nell'orbita di Belluno e Treviso: la Carnia e il Friuli nordoccidentale}{57}{subsection.3.8.4}%
+\contentsline {section}{\numberline {3.9}Le creste della Grande Guerra: la ricerca preistorica nelle zone di confine}{58}{section.3.9}%
+\contentsline {subsection}{\numberline {3.9.1}La ricerca pre-1915: naturalisti, non archeologi}{58}{subsection.3.9.1}%
+\contentsline {subsection}{\numberline {3.9.2}Il Carega e le Piccole Dolomiti vicentine}{59}{subsection.3.9.2}%
+\contentsline {subsection}{\numberline {3.9.3}Il Pasubio}{60}{subsection.3.9.3}%
+\contentsline {subsection}{\numberline {3.9.4}Il Tonezza del Cimone e le creste settentrionali dell'Altopiano di Asiago}{61}{subsection.3.9.4}%
+\contentsline {subsection}{\numberline {3.9.5}Il Monte Grappa}{61}{subsection.3.9.5}%
+\contentsline {subsection}{\numberline {3.9.6}Il Montello}{62}{subsection.3.9.6}%
+\contentsline {subsection}{\numberline {3.9.7}Le crode del Cadore e del Comelico}{63}{subsection.3.9.7}%
+\contentsline {subsection}{\numberline {3.9.8}Una diagnosi complessiva}{63}{subsection.3.9.8}%
+\contentsline {section}{\numberline {3.10}Un confronto numerico}{64}{section.3.10}%
+\contentsline {section}{\numberline {3.11}Cosa questo quadro dimostra, e cosa no}{66}{section.3.11}%
+\contentsline {chapter}{\numberline {4}Cosa avrebbero potuto lasciare}{67}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Il Paleolitico superiore: grotte, ripari e oggetti portatili}{67}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Il repertorio del Paleolitico superiore europeo}{67}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Il Paleolitico superiore nell'area veneta e adiacente}{69}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}Cosa è plausibile per le Alpi venete: arte parietale}{70}{subsection.4.1.3}%
+\contentsline {subsection}{\numberline {4.1.4}Cosa è plausibile per le Alpi venete: arte mobilière}{71}{subsection.4.1.4}%
+\contentsline {subsection}{\numberline {4.1.5}Il grande assente: la produzione su materiali organici}{72}{subsection.4.1.5}%
+\contentsline {subsection}{\numberline {4.1.6}Ambiente e stagionalità}{72}{subsection.4.1.6}%
+\contentsline {section}{\numberline {4.2}Il Mesolitico: mobilità, quota e supporti deperibili}{73}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Il contesto europeo}{73}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}I gruppi mesolitici delle Alpi venete}{74}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Cosa è plausibile per le Alpi venete: i limiti del corpus}{75}{subsection.4.2.3}%
+\contentsline {section}{\numberline {4.3}Neolitico ed Eneolitico: i segni che durano}{75}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}La rivoluzione simbolica del Neolitico alpino}{75}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Le stele antropomorfe: il confine è vicino}{76}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Cosa è plausibile per le Alpi venete}{77}{subsection.4.3.3}%
+\contentsline {section}{\numberline {4.4}Età del bronzo: il periodo più probabile}{78}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Il repertorio dell'età del bronzo alpino}{78}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Il Monte Luppia come prova diretta}{80}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Cosa è plausibile altrove nel Veneto}{80}{subsection.4.4.3}%
+\contentsline {section}{\numberline {4.5}Età del ferro e periodo venetico: la continuità interrotta}{81}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Il repertorio dell'età del ferro alpino}{81}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Il contesto venetico}{82}{subsection.4.5.2}%
+\contentsline {section}{\numberline {4.6}Il problema specifico delle coppelle}{82}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}Ubiquità e difficoltà di censimento}{82}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}La densità attesa}{83}{subsection.4.6.2}%
+\contentsline {chapter}{\numberline {5}Una mappa logica della ricerca preistorica in Veneto}{85}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Dove la luce è caduta, e perché}{86}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}La scuola ferrarese e la Lessinia}{86}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}La Grotta di Fumane: una scoperta che ne genera altre}{87}{subsection.5.1.2}%
+\contentsline {subsection}{\numberline {5.1.3}Il Monte Luppia: un uomo, una visita, un catalogo}{88}{subsection.5.1.3}%
+\contentsline {subsection}{\numberline {5.1.4}Este, Frattesina, Altino: la ricchezza che si trova da sola}{88}{subsection.5.1.4}%
+\contentsline {section}{\numberline {5.2}Le zone buie, e perché sono buie}{89}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}L'assenza dell'ancora istituzionale}{89}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Le zone di guerra: un problema doppio}{90}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}L'alta Carnia e le aree di confine}{91}{subsection.5.2.3}%
+\contentsline {subsection}{\numberline {5.2.4}Il problema specifico dell'arte rupestre}{91}{subsection.5.2.4}%
+\contentsline {section}{\numberline {5.3}La correlazione che conta}{92}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Quattro tipi di silenzio}{93}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Il confronto che illumina la lacuna}{95}{section.5.5}%
+\contentsline {section}{\numberline {5.6}Una distinzione che vale la pena tenere ferma}{96}{section.5.6}%
+\contentsline {chapter}{\numberline {6}Quello che il tempo cancella}{99}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Tre modi di non trovare un sito}{99}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Il substrato: quattro rocce, quattro destini}{100}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}Il calcare: il più comune e il più ingannevole}{101}{subsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.2.2}La dolomia: resistente alla chimica, fragile alla meccanica}{102}{subsection.6.2.2}%
+\contentsline {subsection}{\numberline {6.2.3}Il porfido: il migliore per la conservazione}{103}{subsection.6.2.3}%
+\contentsline {subsection}{\numberline {6.2.4}La trachite: resistente ma difficile da incidere}{103}{subsection.6.2.4}%
+\contentsline {section}{\numberline {6.3}La tecnica: martellina, graffito, pittura}{104}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}La picchiettatura}{104}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}Il graffito}{104}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}La pittura}{105}{subsection.6.3.3}%
+\contentsline {section}{\numberline {6.4}L'esposizione: geometria e quota}{105}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Verticale vs. orizzontale}{106}{subsection.6.4.1}%
+\contentsline {subsection}{\numberline {6.4.2}La quota: un'equazione ambigua}{106}{subsection.6.4.2}%
+\contentsline {section}{\numberline {6.5}La copertura sedimentaria: nascosta ma intatta}{107}{section.6.5}%
+\contentsline {section}{\numberline {6.6}I fattori antropici antichi}{107}{section.6.6}%
+\contentsline {subsection}{\numberline {6.6.1}Il riuso delle superfici}{107}{subsection.6.6.1}%
+\contentsline {subsection}{\numberline {6.6.2}L'agricoltura e la pastorizia medievale}{108}{subsection.6.6.2}%
+\contentsline {subsection}{\numberline {6.6.3}Le cave storiche}{109}{subsection.6.6.3}%
+\contentsline {section}{\numberline {6.7}La Prima Guerra Mondiale come fattore tafonomico}{109}{section.6.7}%
+\contentsline {subsection}{\numberline {6.7.1}Tre effetti distinti}{109}{subsection.6.7.1}%
+\contentsline {subsection}{\numberline {6.7.2}La conseguenza per la ricerca: il valore delle fonti pre-1915}{110}{subsection.6.7.2}%
+\contentsline {subsection}{\numberline {6.7.3}Le creste coinvolte}{111}{subsection.6.7.3}%
+\contentsline {section}{\numberline {6.8}I fattori antropici moderni}{112}{section.6.8}%
+\contentsline {subsection}{\numberline {6.8.1}Le infrastrutture turistiche e il paradosso della frequentazione}{112}{subsection.6.8.1}%
+\contentsline {subsection}{\numberline {6.8.2}Il turismo di massa e il danneggiamento diretto}{112}{subsection.6.8.2}%
+\contentsline {subsection}{\numberline {6.8.3}Le cave moderne}{113}{subsection.6.8.3}%
+\contentsline {section}{\numberline {6.9}Il filtro tafonomico: un bilancio per periodo}{113}{section.6.9}%
+\contentsline {subsection}{\numberline {6.9.1}Paleolitico superiore (45.000--12.000 anni prima dell'anno zero)}{113}{subsection.6.9.1}%
+\contentsline {subsection}{\numberline {6.9.2}Mesolitico (11.500--6.500 anni prima dell'anno zero)}{114}{subsection.6.9.2}%
+\contentsline {subsection}{\numberline {6.9.3}Neolitico ed Eneolitico (7.500--3.800 anni prima dell'anno zero)}{114}{subsection.6.9.3}%
+\contentsline {subsection}{\numberline {6.9.4}Età del bronzo (3.800--2.800 anni prima dell'anno zero)}{115}{subsection.6.9.4}%
+\contentsline {section}{\numberline {6.10}L'ipotesi alternativa: e se non ci fosse mai stata?}{115}{section.6.10}%
+\contentsline {part}{III\hspace {1em}Dove guardare}{119}{part.3}%
+\contentsline {chapter}{\numberline {7}Dove guardare}{121}{chapter.7}%
+\contentsline {section}{\numberline {7.1}La logica del movimento: animali e uomini}{121}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Il metodo Kompatscher: nato dal camminare, non dal calcolare}{122}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Le prospezioni sistematiche nelle Alpi: tre casi di riferimento}{124}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Il Paleolitico superiore: grotte, rocce e clima}{126}{section.7.4}%
+\contentsline {section}{\numberline {7.5}Il Mesolitico: valichi, passi e logica di Kompatscher}{127}{section.7.5}%
+\contentsline {section}{\numberline {7.6}Il Neolitico: coppelle, stele e pianori}{128}{section.7.6}%
+\contentsline {section}{\numberline {7.7}L'Eneolitico: valichi come nodi di scambio}{129}{section.7.7}%
+\contentsline {section}{\numberline {7.8}L'età del bronzo: pareti verticali e bacini visivi}{130}{section.7.8}%
+\contentsline {section}{\numberline {7.9}L'età del ferro e il periodo venetico: continuità e aggiunte}{131}{section.7.9}%
+\contentsline {section}{\numberline {7.10}I luoghi persistenti: quattro tipi di attrattore}{132}{section.7.10}%
+\contentsline {chapter}{\numberline {8}Un bilancio dell'ignoto}{135}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Come leggere le due tavole}{135}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Tavola 1: quali tipi di arte, in quale epoca}{136}{section.8.2}%
+\contentsline {section}{\numberline {8.3}Tavola 2: quali luoghi, quali tipi di arte, quali epoche}{136}{section.8.3}%
+\contentsline {section}{\numberline {8.4}Cosa dicono le tavole}{139}{section.8.4}%
+\contentsline {section}{\numberline {8.5}I santuari alpini: una categoria mancante}{140}{section.8.5}%
+\contentsline {section}{\numberline {8.6}Le lacune osservative su larga scala}{146}{section.8.6}%
+\contentsline {section}{\numberline {8.7}Quello che potremmo trovare}{149}{section.8.7}%
+\contentsline {section}{\numberline {8.8}Conclusioni aperte}{151}{section.8.8}%
+\contentsline {chapter}{Repertorio dei siti preistorici veneti nel catalogo MiC}{155}{chapter*.3}%
+\contentsline {section}{\numberline {8.9}Paleolitico}{156}{section.8.9}%
+\contentsline {subsection}{\numberline {8.9.1}Altopiano Vicentino}{156}{subsection.8.9.1}%
+\contentsline {subsection}{\numberline {8.9.2}Colli Euganei e Berici}{156}{subsection.8.9.2}%
+\contentsline {subsection}{\numberline {8.9.3}Lessinia}{157}{subsection.8.9.3}%
+\contentsline {subsection}{\numberline {8.9.4}Pianura Veronese e Bassa}{158}{subsection.8.9.4}%
+\contentsline {subsection}{\numberline {8.9.5}Pianura e Delta}{158}{subsection.8.9.5}%
+\contentsline {subsection}{\numberline {8.9.6}Prealpi Trevigiane e Pedemontana}{158}{subsection.8.9.6}%
+\contentsline {section}{\numberline {8.10}Mesolitico}{159}{section.8.10}%
+\contentsline {subsection}{\numberline {8.10.1}Lessinia}{159}{subsection.8.10.1}%
+\contentsline {subsection}{\numberline {8.10.2}Prealpi Trevigiane e Pedemontana}{160}{subsection.8.10.2}%
+\contentsline {subsection}{\numberline {8.10.3}Prealpi Vicentine e Piccole Dolomiti}{160}{subsection.8.10.3}%
+\contentsline {section}{\numberline {8.11}Neolitico}{161}{section.8.11}%
+\contentsline {subsection}{\numberline {8.11.1}Altopiano Vicentino}{161}{subsection.8.11.1}%
+\contentsline {subsection}{\numberline {8.11.2}Bellunese e Feltrino}{161}{subsection.8.11.2}%
+\contentsline {subsection}{\numberline {8.11.3}Cadore e Comelico}{162}{subsection.8.11.3}%
+\contentsline {subsection}{\numberline {8.11.4}Colli Euganei e Berici}{162}{subsection.8.11.4}%
+\contentsline {subsection}{\numberline {8.11.5}Lago di Garda e Adige}{163}{subsection.8.11.5}%
+\contentsline {subsection}{\numberline {8.11.6}Lessinia}{163}{subsection.8.11.6}%
+\contentsline {subsection}{\numberline {8.11.7}Pianura Veronese e Bassa}{164}{subsection.8.11.7}%
+\contentsline {subsection}{\numberline {8.11.8}Prealpi Trevigiane e Pedemontana}{165}{subsection.8.11.8}%
+\contentsline {subsection}{\numberline {8.11.9}Prealpi Vicentine e Piccole Dolomiti}{165}{subsection.8.11.9}%
+\contentsline {section}{\numberline {8.12}Eneolitico}{166}{section.8.12}%
+\contentsline {subsection}{\numberline {8.12.1}Bellunese e Feltrino}{166}{subsection.8.12.1}%
+\contentsline {subsection}{\numberline {8.12.2}Cadore e Comelico}{167}{subsection.8.12.2}%
+\contentsline {subsection}{\numberline {8.12.3}Colli Euganei e Berici}{167}{subsection.8.12.3}%
+\contentsline {subsection}{\numberline {8.12.4}Lago di Garda e Adige}{167}{subsection.8.12.4}%
+\contentsline {subsection}{\numberline {8.12.5}Lessinia}{167}{subsection.8.12.5}%
+\contentsline {subsection}{\numberline {8.12.6}Pianura Veronese e Bassa}{168}{subsection.8.12.6}%
+\contentsline {subsection}{\numberline {8.12.7}Prealpi Trevigiane e Pedemontana}{168}{subsection.8.12.7}%
+\contentsline {section}{\numberline {8.13}Età del Bronzo}{168}{section.8.13}%
+\contentsline {subsection}{\numberline {8.13.1}Bellunese e Feltrino}{169}{subsection.8.13.1}%
+\contentsline {subsection}{\numberline {8.13.2}Cadore e Comelico}{170}{subsection.8.13.2}%
+\contentsline {subsection}{\numberline {8.13.3}Colli Euganei e Berici}{170}{subsection.8.13.3}%
+\contentsline {subsection}{\numberline {8.13.4}Lago di Garda e Adige}{171}{subsection.8.13.4}%
+\contentsline {subsection}{\numberline {8.13.5}Lessinia}{172}{subsection.8.13.5}%
+\contentsline {subsection}{\numberline {8.13.6}Pianura Veronese e Bassa}{172}{subsection.8.13.6}%
+\contentsline {subsection}{\numberline {8.13.7}Pianura e Delta}{174}{subsection.8.13.7}%
+\contentsline {subsection}{\numberline {8.13.8}Prealpi Trevigiane e Pedemontana}{174}{subsection.8.13.8}%
+\contentsline {section}{\numberline {8.14}Età del Ferro}{176}{section.8.14}%
+\contentsline {subsection}{\numberline {8.14.1}Bellunese e Feltrino}{176}{subsection.8.14.1}%
+\contentsline {subsection}{\numberline {8.14.2}Cadore e Comelico}{177}{subsection.8.14.2}%
+\contentsline {subsection}{\numberline {8.14.3}Colli Euganei e Berici}{178}{subsection.8.14.3}%
+\contentsline {subsection}{\numberline {8.14.4}Lago di Garda e Adige}{178}{subsection.8.14.4}%
+\contentsline {subsection}{\numberline {8.14.5}Lessinia}{178}{subsection.8.14.5}%
+\contentsline {subsection}{\numberline {8.14.6}Pianura Veronese e Bassa}{179}{subsection.8.14.6}%
+\contentsline {subsection}{\numberline {8.14.7}Pianura e Delta}{179}{subsection.8.14.7}%
+\contentsline {subsection}{\numberline {8.14.8}Prealpi Trevigiane e Pedemontana}{180}{subsection.8.14.8}%
+\contentsline {subsection}{\numberline {8.14.9}Prealpi Vicentine e Piccole Dolomiti}{180}{subsection.8.14.9}%
+\contentsline {chapter}{Glossario}{183}{chapter*.4}%
+\contentsline {chapter}{Fonti}{197}{chapter*.4}%
+\xpginauxfilefalse 

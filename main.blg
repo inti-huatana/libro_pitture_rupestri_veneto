@@ -1,0 +1,57 @@
+This is BibTeX, Version 0.99d (TeX Live 2023/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: plainnat.bst
+Database file #1: references.bib
+Warning--empty publisher in bartolomei1980
+Warning--empty year in memoriachilena_rupestre
+Warning--empty publisher in bonetto2009
+Warning--there's a number but no volume in ceruti2025
+Warning--empty journal in gaggia1982
+Warning--empty journal in gaggia2002
+Warning--empty year in archeocadore
+Warning--empty year in museo_precolombino_medano
+Warning--empty year in mnhn_qhapaq_atacama
+Warning--empty year in qhapaq_atacama_minas
+You've used 77 entries,
+            2773 wiz_defined-function locations,
+            1051 strings with 29641 characters,
+and the built_in function-call counts, 32159 in all, are:
+= -- 2877
+> -- 1735
+< -- 67
++ -- 601
+- -- 524
+* -- 2313
+:= -- 5063
+add.period$ -- 277
+call.type$ -- 77
+change.case$ -- 385
+chr.to.int$ -- 77
+cite$ -- 164
+duplicate$ -- 1538
+empty$ -- 2730
+format.name$ -- 642
+if$ -- 6733
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 72
+newline$ -- 433
+num.names$ -- 318
+pop$ -- 827
+preamble$ -- 1
+purify$ -- 319
+quote$ -- 0
+skip$ -- 1161
+stack$ -- 0
+substring$ -- 931
+swap$ -- 121
+text.length$ -- 9
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 790
+warning$ -- 10
+while$ -- 298
+width$ -- 0
+write$ -- 1064
+(There were 10 warnings)

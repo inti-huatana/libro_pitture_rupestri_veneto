@@ -1,0 +1,668 @@
+\begin{thebibliography}{77}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Arc\`a and Fossati(2012)]{arca_fossati}
+Andrea Arc\`a and Angelo~E. Fossati.
+\newblock Le pitture rupestri sotto riparo dell'arco alpino, uno sguardo
+  d'insieme, 2012.
+\newblock In: De Marinis R., Dalmeri G., Pedrotti A. (a cura di), Preistoria
+  Alpina, vol. 46, 2012, pp. 127--132.
+
+\bibitem[Arc\`a et~al.(1997)Arc\`a, Fossati, Marchi, and Tognoni]{arca1997}
+Andrea Arc\`a, Angelo Fossati, Enrico Marchi, and Elena Tognoni.
+\newblock Gli ultimi studi sull'arte rupestre delle alpi occidentali, 1997.
+\newblock TRACCE Online Rock Art Bulletin, n. 9.
+
+\bibitem[Avigliano et~al.(2000)Avigliano, Di~Anastasio, Improta, Peresani, and
+  Ravazzi]{avigliano2000}
+Rossana Avigliano, Giuseppe Di~Anastasio, Stefano Improta, Marco Peresani, and
+  Cesare Ravazzi.
+\newblock A new late glacial--early holocene palaeobotanical and archaeological
+  record in the eastern pre-alps: the palughetto basin (cansiglio plateau,
+  italy).
+\newblock \emph{Journal of Quaternary Science}, 15\penalty0 (8):\penalty0
+  789--803, 2000.
+
+\bibitem[Bartolomei et~al.(1980)Bartolomei, Broglio, Cattani, Cremaschi, Sala,
+  and Tirabassi]{bartolomei1980}
+Giorgio Bartolomei, Alberto Broglio, Luciana Cattani, Mauro Cremaschi,
+  Benedetto Sala, and Jole Tirabassi.
+\newblock La grotta di san bernardino nei colli berici (vicenza): risultati
+  delle campagne di scavo 1969--1976.
+\newblock In Leone Fasani, editor, \emph{Il Territorio Veronese dalle Origini
+  all'Et\`a Romana}, pages 55--129. Verona, 1980.
+\newblock Documenta l'industria musteriana e la fauna associata (rinoceronte
+  lanoso, orso delle caverne, iena delle caverne) della Grotta di San
+  Bernardino; le datazioni collocano l'occupazione neandertaliana in una fascia
+  cronologica che risale a circa 250.000 anni prima dell'anno zero.
+
+\bibitem[Bartolomei et~al.(1992)Bartolomei, Broglio, Guerreschi, Leonardi,
+  Peretto, and Sala]{bartolomei1992}
+Giorgio Bartolomei, Alberto Broglio, Attilio Guerreschi, Piero Leonardi, Carlo
+  Peretto, and Benedetto Sala.
+\newblock I giacimenti del paleolitico e del mesolitico nel veneto: i siti, i
+  problemi, le prospettive.
+\newblock \emph{Preistoria Alpina}, 28, 1992.
+\newblock Museo Tridentino di Scienze Naturali. Include la sintesi delle
+  ricerche su Riparo Tagliente: produzione artistica mobilière (strumenti
+  ossei decorati, elementi di ornamento perforati) e assenza di arte parietale
+  \textit{in situ} nei livelli scavati.
+
+\bibitem[Berti et~al.(2022)]{berti2022}
+Emilio Berti et~al.
+\newblock The r package enerscape: a general energy landscape framework for
+  terrestrial movement ecology.
+\newblock \emph{Methods in Ecology and Evolution}, 2022.
+\newblock Applica il modello ARC di Pontzer (2016) alla costruzione di
+  superfici di costo energetico da modelli digitali del terreno.
+
+\bibitem[Bettineschi et~al.(2022)]{bettineschi2022}
+Cinzia Bettineschi et~al.
+\newblock More than meets the eye: the assa valley rock art.
+\newblock In \emph{Rock Art Research in the Digital Era}, number S3098 in BAR
+  International Series, pages 107--121, 2022.
+
+\bibitem[{Biblioteca Nacional de Chile}()]{memoriachilena_rupestre}
+{Biblioteca Nacional de Chile}.
+\newblock Manifestaciones rupestres e iconografía.
+\newblock Memoria Chilena, portal della Biblioteca Nacional de Chile: sintesi
+  sulle pitture del complesso Las Ánimas nel nord della Región de Atacama,
+  sui petroglifi della Valle del Huasco (stile La Silla, con le caratteristiche
+  coppelle isolate dette localmente ``copitas''), e sul sito costiero di Las
+  Lizas presso Caldera.
+
+\bibitem[{Bietti Sestieri}(1996)]{bietti_sestieri1996}
+Anna~Maria {Bietti Sestieri}.
+\newblock \emph{Protostoria: teoria e pratica}.
+\newblock La Nuova Italia Scientifica, Roma, 1996.
+\newblock Manuale di riferimento per la protostoria italiana, con capitoli
+  dedicati a Frattesina di Fratta Polesine (Bronzo finale: prima fornace
+  vetraria d'Europa occidentale, lavorazione dell'avorio e dell'ambra) e
+  all'Italia nordorientale nell'et\`a del bronzo.
+
+\bibitem[Bohnett et~al.(2024)Bohnett, Oetting, Noss, O'Brien, Frakes, Smith,
+  Lockhart, Mullinax, Poor, Scheick, and Hoctor]{bohnett2024}
+Eve Bohnett, Jon Oetting, Reed Noss, Michael O'Brien, Robert Frakes, Dan Smith,
+  Sarah Lockhart, Jennifer Mullinax, Erin~E. Poor, Brian Scheick, and Thomas
+  Hoctor.
+\newblock Consolidating diverse modeling methods and spatial prioritization for
+  multispecies connectivity planning.
+\newblock \emph{Frontiers in Conservation Science}, 5:\penalty0 1406944, 2024.
+\newblock \doi{10.3389/fcosc.2024.1406944}.
+\newblock Osserva che gli animali di grande taglia e ampio raggio d'azione (le
+  cosiddette specie ``flagship'' o ``umbrella'') sono quelli storicamente più
+  studiati nella ricerca sulla connettività ecologica, proprio perché si
+  presume forniscano un ombrello di connettività utile anche per altre specie;
+  pianificazioni di corridoio efficaci per una specie possono non esserlo per
+  un'altra, a causa delle differenze di idoneità dell'habitat, distanza di
+  dispersione ed estensione del territorio.
+
+\bibitem[Boltshauser-Kaltenrieder and Tinner(2024)]{boltshauser2024}
+Petra Boltshauser-Kaltenrieder and Willy Tinner.
+\newblock Continuous vegetation history of the {Euganean Hills} during the past
+  32,000 years: early establishment of deciduous oak forests at a glacial
+  refugium.
+\newblock \emph{Vegetation History and Archaeobotany}, 33:\penalty0 547--562,
+  2024.
+\newblock \doi{10.1007/s00334-024-00997-7}.
+
+\bibitem[Bonetto(2009)]{bonetto2009}
+Jacopo Bonetto.
+\newblock \emph{Veneto}.
+\newblock Archeologia delle Regioni d'Italia. Roma, 2009.
+
+\bibitem[Bonomi(1991)]{bonomi1991}
+Simonetta Bonomi.
+\newblock San basilio di ariano polesine: l'emporio arcaico nel delta del po.
+\newblock \emph{Padusa}, 27, 1991.
+\newblock Documenta le fasi di frequentazione dell'emporio adriatico di San
+  Basilio (VII--V sec.\ prima dell'anno zero) con ceramica greca, etrusca e
+  venetica; il sito \`e interpretato come nodo della rete commerciale
+  adriatica.
+
+\bibitem[Bortolami and {Soprintendenza per i Beni Archeologici del
+  Veneto}(2014)]{asta2014}
+Fabio Bortolami and {Soprintendenza per i Beni Archeologici del Veneto}.
+\newblock Scafi monossili nell'antico alveo del brenta a campagna lupia
+  (venezia), 2014.
+\newblock Comunicazione relativa al recupero nel 2014 di scafi monossili in
+  quercia dal canale del Cornio (Campagna Lupia, Venezia), nell'antico alveo
+  del Brenta meridionale, con resti di castoro in contesto forestale-ripario
+  dell'et\`a del Bronzo.
+
+\bibitem[Broglio(1992)]{broglio1992}
+Alberto Broglio.
+\newblock Le pietre dipinte dell'epigravettiano recente del riparo villabruna-a
+  (dolomiti venete).
+\newblock \emph{Atti della XXVIII Riunione Scientifica dell'Istituto Italiano
+  di Preistoria e Protostoria}, pages 223--238, 1992.
+
+\bibitem[Broglio(1998)]{broglio1998}
+Alberto Broglio.
+\newblock Considerazioni sulla produzione artistica dell'epigravettiano recente
+  del veneto e del trentino.
+\newblock \emph{Rivista di Scienze Preistoriche}, 49:\penalty0 103--121, 1998.
+
+\bibitem[Broglio and Dalmeri(2005)]{broglio2005}
+Alberto Broglio and Giampaolo Dalmeri, editors.
+\newblock \emph{Pitture paleolitiche nelle Prealpi venete. Grotta di Fumane e
+  Riparo Dalmeri}, number~9 in Memorie del Museo Civico di Storia Naturale di
+  Verona, 2\textordmasculine{} serie, Sezione Scienze dell'Uomo, 2005.
+
+\bibitem[Broglio et~al.(2003)Broglio, De~Stefani, and Gurioli]{broglio2003}
+Alberto Broglio, Marco De~Stefani, and Federica Gurioli.
+\newblock Pitture aurignaziane nella grotta di fumane.
+\newblock \emph{Atti dell'Istituto Veneto di Scienze, Lettere ed Arti}, 162,
+  2003.
+
+\bibitem[Capuzzi and Sala(1980)]{capuzzisala1980}
+P.~Capuzzi and Benedetto Sala.
+\newblock Il riparo tagliente: analisi delle faune, biostratigrafia e
+  cronologia dei livelli tardiglaciali.
+\newblock \emph{Il Territorio Veronese dalle Origini all'Età Romana}, pages
+  130--136, 1980.
+
+\bibitem[Ceruti(2025)]{ceruti2025}
+Constanza Ceruti.
+\newblock Patrimonio religioso, ritos y creencias en las m\'as altas monta\~nas
+  de los alpes: una aproximaci\'on desde la antropolog\'ia.
+\newblock \emph{Revista Artificios}, \penalty0 (1):\penalty0 47--59, 2025.
+\newblock Documenta santuari, cappelle e tradizioni devozionali sull'intero
+  arco alpino, dalle Alpi Marittime alle Dolomiti italo-austriache e alle Alpi
+  Carniche e Giuliane; la sacralità delle cime alpine è descritta come
+  «largamente ignorata nella discussione accademica contemporanea».
+
+\bibitem[Chauvet et~al.(1995)Chauvet, {Deschamps-Brunel}, and
+  Hillaire]{chauvet1995}
+Jean-Marie Chauvet, {\'E}liette {Deschamps-Brunel}, and Christian Hillaire.
+\newblock \emph{La Grotte Chauvet: L'Art des Origines}.
+\newblock Seuil, Paris, 1995.
+\newblock Prima monografia sulla Grotta Chauvet (scoperta il 18 dicembre 1994),
+  con le figure di leoni, rinoceronti, mammut e orsi datable intorno a 36.000
+  anni prima dell'anno zero; contiene le prime datazioni al radiocarbonio dei
+  pigmenti su carbone e le fotografie originali dei pannelli. Traduzione
+  inglese: Chauvet Cave: The Discovery of the World's Oldest Paintings (Thames
+  and Hudson, 1996).
+
+\bibitem[{Chieco Bianchi} and {Calzavara Capuis}(1988)]{chieco_bianchi1988}
+Anna~Maria {Chieco Bianchi} and Loredana {Calzavara Capuis}, editors.
+\newblock \emph{Este preromana: una citt\`a e i suoi santuari}.
+\newblock Museo Civico di Este, Este, 1988.
+\newblock Catalogo e studio del santuario urbano di Este con le lamine votive
+  in bronzo figurato dedicate alla dea Reitia (VIII--I sec.\ prima dell'anno
+  zero): cavalieri, carri, serpenti, figure umane in stile influenzato dalla
+  tradizione medioitalica.
+
+\bibitem[Clottes(2008)]{clottes2010}
+Jean Clottes.
+\newblock \emph{Cave Art}.
+\newblock Phaidon, London, 2008.
+\newblock Sintesi comparativa dell'arte parietale nelle grotte europee del
+  Paleolitico superiore, dalle prime attestazioni aurignaziane (Chauvet) al
+  Magdaleniano (Lascaux, Altamira, Font-de-Gaume); include discussione delle
+  datazioni, delle tecniche pittoriche e dei contesti culturali.
+
+\bibitem[Conard(2009)]{conard2009}
+Nicholas~J. Conard.
+\newblock A female figurine from the basal aurignacian of hohle fels cave in
+  southwestern germany.
+\newblock \emph{Nature}, 459:\penalty0 248--252, 2009.
+\newblock \doi{10.1038/nature07995}.
+\newblock Riporta la scoperta della Venere di Hohle Fels (Jura svevo,
+  Germania), datata tra 40.000 e 33.000 anni prima dell'anno zero: la figurina
+  umana in avorio di mammut pi\`u antica del mondo; il contesto include anche
+  animali intagliati (mammut, cavallino, uccello) dagli altri siti dello Jura
+  svevo (Vogelherd, Hohlenstein-Stadel).
+
+\bibitem[Cornelissen and Reitmaier(2016)]{cornelissen2016}
+Marcel Cornelissen and Thomas Reitmaier.
+\newblock Filling the gap: recent mesolithic discoveries in the central and
+  south-eastern swiss alps.
+\newblock \emph{Quaternary International}, 2016.
+\newblock Silvretta Historica project.
+
+\bibitem[Cremaschi and Van Vliet-Lano{\"e}(1990)]{cremaschi1990}
+Mauro Cremaschi and Brigitte Van Vliet-Lano{\"e}.
+\newblock Traces of frost activity and ice segregation in {Pleistocene} loess
+  deposits and till in {Northern Italy}: deep seasonal freezing or permafrost?
+\newblock \emph{Quaternary International}, 5:\penalty0 39--48, 1990.
+
+\bibitem[Dalmeri and Pedrotti(1994)]{dalmeri1994}
+Giampaolo Dalmeri and Annaluisa Pedrotti.
+\newblock L'epigravettiano finale nelle alpi orientali: siti e problemi.
+\newblock \emph{Studi Trentini di Scienze Naturali, Acta Praehistorica}, 71,
+  1994.
+\newblock Include l'interpretazione dei passi Falzarego e Valparola come
+  corridoi di transito nella rete mesolitica regionale; il testo riprende le
+  analisi dei principali siti della fase di transizione
+  epigravettiana-mesolitica nelle Dolomiti e nelle Prealpi venete.
+
+\bibitem[Dalmeri et~al.(2002)Dalmeri, Kompatscher, {Hrozny Kompatscher},
+  Cusinato, and Bassetti]{dalmeri2002}
+Giampaolo Dalmeri, Klaus Kompatscher, Nandi~Maria {Hrozny Kompatscher}, Antonio
+  Cusinato, and Michele Bassetti.
+\newblock Gli accampamenti epigravettiani di riparo dalmeri in localit\`a gaban
+  (grigno, valsugana): aggiornamento delle ricerche.
+\newblock \emph{Preistoria Alpina}, 38, 2002.
+\newblock MUSE, Museo delle Scienze di Trento. Documenta il complesso
+  epigravettiano del Riparo Dalmeri (Grigno, Valsugana orientale, circa 1.240
+  m) con oltre sessanta ciottoli dipinti con figure in ocra rossa e nera
+  (cervo, stambecco, figure geometriche, almeno una figura umana), datati
+  intorno a 13.000 anni prima dell'anno zero in contesto di accampamento
+  stagionale ricorrente.
+
+\bibitem[De~Angelis et~al.(2021)]{deangelis2021}
+Flavia De~Angelis et~al.
+\newblock Caccia al camoscio nell'epigravettiano italiano.
+\newblock \emph{Atti della Riunione Scientifica dell'Istituto Italiano di
+  Preistoria e Protostoria}, 2021.
+
+\bibitem[{de Lumley}(1995)]{lumley1995}
+Henry {de Lumley}.
+\newblock Le mont bego: une montagne sacr{\'e}e de l'{\^a}ge du bronze.
+\newblock \emph{Dossiers d'Arch{\'e}ologie}, 203, 1995.
+\newblock Sintesi sul corpus rupestre di Monte Bego nelle Alpi Marittime
+  (Tende, Francia), al confine con l'Italia: circa 40.000 incisioni concentrate
+  tra i 2.000 e i 2.700 metri di quota, principalmente armi (palette-asce),
+  bovini e figure geometriche, datate alla tarda et\`a del Bronzo (3.500--2.500
+  anni prima dell'anno zero).
+
+\bibitem[De~Marinis and Fossati(2012)]{demarinis2012}
+Raffaele~C. De~Marinis and Angelo~E. Fossati.
+\newblock A che punto \`e lo studio dell'arte rupestre della valcamonica.
+\newblock \emph{Preistoria Alpina}, 46\penalty0 (2):\penalty0 17--43, 2012.
+
+\bibitem[Discosti and Peresani(2023)]{discosti2023}
+Riccardo Discosti and Marco Peresani.
+\newblock Archeologia in montagna. alla ricerca delle tracce preistoriche della
+  frequentazione umana sulle nostre montagne.
+\newblock Technical report, Club Alpino Italiano, Quaderni del Comitato
+  Scientifico Centrale, 2023.
+
+\bibitem[Earl et~al.(2010)Earl, Martinez, and Malzbender]{earl2010}
+Graeme Earl, Kirk Martinez, and Tom Malzbender.
+\newblock Archaeological applications of polynomial texture mapping: analysis,
+  conservation and management of heritage.
+\newblock \emph{Journal of Archaeological Science}, 37\penalty0 (8):\penalty0
+  2040--2050, 2010.
+\newblock \doi{10.1016/j.jas.2010.03.009}.
+\newblock Applicazione sistematica della tecnica RTI (Reflectance
+  Transformation Imaging) a superfici di interesse archeologico; dimostra la
+  capacit\`a del metodo di rivelare incisioni invisibili in luce diretta su
+  superfici calcaree e di altra natura, con applicazioni alla documentazione e
+  al monitoraggio dell'arte rupestre.
+
+\bibitem[Fiore and Tagliacozzo(2005)]{fioretagliacozzo2005}
+Ivana Fiore and Antonio Tagliacozzo.
+\newblock Riparo ``cogola'' (carbonare, trento): il contesto paleoecologico e
+  lo sfruttamento delle risorse animali tra epigravettiano e mesolitico antico.
+\newblock \emph{Preistoria Alpina}, 2005.
+
+\bibitem[Fiore et~al.(2003)Fiore, Tagliacozzo, and Cassoli]{fioreetal2003}
+Ivana Fiore, Antonio Tagliacozzo, and Pier~Franco Cassoli.
+\newblock Lo sfruttamento delle risorse animali nei siti di altura e di
+  fondovalle nel tardiglaciale dell'italia nord-orientale.
+\newblock \emph{Quaderni del Museo Archeologico del Friuli Occidentale},
+  6:\penalty0 97--109, 2003.
+\newblock Atti del 4$^{\circ}$ Convegno Nazionale di Archeozoologia, Pordenone,
+  13--15 novembre 2003.
+
+\bibitem[Fontana et~al.(2020)Fontana, Visentin, Bastiani, Avanzini, Bazzanella,
+  Flor, Guerreschi, Pedrotti, and Tecchiati]{fontana2020}
+Federica Fontana, Davide Visentin, Giovanna Bastiani, Marco Avanzini, Marta
+  Bazzanella, Elisabetta Flor, Attilio Guerreschi, Annaluisa Pedrotti, and
+  Umberto Tecchiati.
+\newblock The late mesolithic burial from mondeval de sora (dolomites, ne
+  italy): a revision.
+\newblock \emph{PLoS ONE}, 15\penalty0 (9):\penalty0 e0239259, 2020.
+\newblock \doi{10.1371/journal.pone.0239259}.
+\newblock Pubblicazione definitiva della sepoltura castelnoviana di Mondeval de
+  Sora (San Vito di Cadore, Belluno, 2.150 m slm), datata a 6430--6210 anni
+  prima dell'anno zero (calibrati); il corredo comprende oltre sessanta oggetti
+  tra cui ornamenti in dente di cervo perforati, conchiglie marine e strumenti
+  in selce di alta qualit\`a tecnica.
+
+\bibitem[Gaggia(1982)]{gaggia1982}
+Fabio Gaggia.
+\newblock Le incisioni rupestri del lago di garda.
+\newblock 1982.
+
+\bibitem[Gaggia(2002)]{gaggia2002}
+Fabio Gaggia.
+\newblock Graffiti sul garda.
+\newblock 2002.
+
+\bibitem[Georgii(1980)]{georgii1980a}
+Bernhard Georgii.
+\newblock Home range patterns of female red deer (\textit{Cervus elaphus} l.)
+  in the alps.
+\newblock \emph{Oecologia}, 47:\penalty0 278--285, 1980.
+
+\bibitem[Georgii(1981)]{georgii1981}
+Bernhard Georgii.
+\newblock Home range and activity patterns of male red deer (\textit{Cervus
+  elaphus} l.) in the alps.
+\newblock \emph{Oecologia}, 49\penalty0 (1):\penalty0 127--136, 1981.
+
+\bibitem[Graziosi(1975)]{graziosi1975}
+Paolo Graziosi.
+\newblock \emph{L'arte preistorica in Italia}.
+\newblock Sansoni, Firenze, 1975.
+\newblock Opera di riferimento per l'arte paleolitica nella penisola italiana:
+  include la Grotta di Fumane (Valpolicella, VR), la Grotta Paglicci (Foggia,
+  Puglia: mano negativa pi\`u antica d'Italia e cavallo dipinto in rosso, circa
+  34.000 anni prima dell'anno zero), la Grotta del Romito (Calabria: grande bue
+  selvatico inciso, 19.000--17.000 anni prima dell'anno zero), la Grotta
+  dell'Addaura (Monti Peloritani, Sicilia: scene umane di straordinaria
+  complessit\`a, 14.000--11.000 anni prima dell'anno zero).
+
+\bibitem[{Gruppo Archeologico Cadorino}()]{archeocadore}
+{Gruppo Archeologico Cadorino}.
+\newblock Cadore, un territorio antico.
+\newblock Sintesi sui ritrovamenti mesolitici del Cadore: la sepoltura
+  dell'Uomo di Mondeval, i manufatti di Passo Falzarego, Passo Valparola, Passo
+  Giau, e le scoperte del 1999-2000 in Val Visdende (Coston della Spina, Pian
+  dei Buoi, Dignas, Val Digon).
+
+\bibitem[Halsey(2016)]{halsey2016}
+Lewis~G. Halsey.
+\newblock Terrestrial movement energetics: current knowledge and its
+  application to the optimising animal.
+\newblock \emph{Journal of Experimental Biology}, 219:\penalty0 1424--1431,
+  2016.
+\newblock Rassegna sui costi energetici del movimento terrestre; per la maggior
+  parte delle specie il costo del movimento è approssimativamente lineare
+  rispetto alla velocità su terreno piano.
+
+\bibitem[Helskog(1988)]{helskog1988}
+Knut Helskog.
+\newblock \emph{Helleristningene i Alta: spor etter ritualer og dagligliv i
+  finnmarks forhistorie}.
+\newblock Alta Museum, Alta, 1988.
+\newblock Monografia fondamentale sul sito di Alta (Norvegia), le incisioni
+  rupestri pi\`u settentrionali d'Europa: figure di renne, alci, orsi e scene
+  di caccia su roccia granitica, con una fase mesolitica documentata (tra 6.000
+  e 4.200 anni prima dell'anno zero) e fasi successive fino a 2.000 anni prima
+  dell'anno zero. Iscritto nel patrimonio mondiale UNESCO dal 1985.
+
+\bibitem[{Istituto Italiano di Preistoria e
+  Protostoria}(2023)]{iipp_cansiglio2023}
+{Istituto Italiano di Preistoria e Protostoria}.
+\newblock 30 anni di ricerche archeologiche in cansiglio, risultati,
+  prospettive future e ricadute sul territorio, 2023.
+\newblock Annuncio del convegno del 20 ottobre 2023 sui trent'anni di scavi
+  coordinati dall'Università di Ferrara dal 1993 sui siti preistorici e
+  paleoecologici del Cansiglio, tra cui accampamenti risalenti a circa 15.000
+  anni fa.
+
+\bibitem[Kaltenrieder et~al.(2009)Kaltenrieder, Belis, Ravazzi, Tinner,
+  et~al.]{kaltenrieder2009}
+Petra Kaltenrieder, Carole~A. Belis, Cesare Ravazzi, Willy Tinner, et~al.
+\newblock Environmental and climatic conditions at a potential {Glacial}
+  refugial site of tree species near the {Southern} {Alpine} margin. a
+  multiproxy study from {Lago della Costa} ({Euganean Hills, Northeastern
+  Italy}).
+\newblock \emph{Quaternary Science Reviews}, 28:\penalty0 2647--2662, 2009.
+
+\bibitem[Kaltenrieder et~al.(2010)Kaltenrieder, Procacci, Vanni{\`e}re, and
+  Tinner]{kaltenrieder2010}
+Petra Kaltenrieder, Gianluca Procacci, Boris Vanni{\`e}re, and Willy Tinner.
+\newblock Vegetation and fire history of the {Euganean Hills} ({Colli Euganei})
+  as inferred from {Late-glacial} and {Holocene} multiproxy sedimentary
+  records.
+\newblock \emph{The Holocene}, 20:\penalty0 679--695, 2010.
+
+\bibitem[Kompatscher and Hrozny~Kompatscher(2007)]{kompatscher2007}
+Klaus Kompatscher and Nandi~Maria Hrozny~Kompatscher.
+\newblock Dove piantare il campo: modelli insediativi e di mobilit\`a nel
+  mesolitico in ambiente alpino.
+\newblock \emph{Preistoria Alpina}, 42:\penalty0 137--162, 2007.
+\newblock Museo Tridentino di Scienze Naturali, ISSN 0393-0157. Testo integrale
+  consultato, comprensivo di appendice con l'elenco di oltre 300 siti.
+
+\bibitem[Leitner(2013)]{leitner2013}
+Walter Leitner.
+\newblock Steinzeitliche fundstellen im hochgebirge des tiroler inn-gebietes.
+\newblock In Klaus Oeggl and Maria Prast, editors, \emph{Alpine Arch\"aologie}.
+  Universit{\"a}tsverlag Innsbruck, Innsbruck, 2013.
+\newblock Revisione sistematica dei siti preistorici d'alta quota nel bacino
+  del fiume Inn (Tirolo settentrionale); discute pattern insediativi,
+  metodologie di prospezione e relazione tra morfologia del terreno e
+  distribuzione dei ritrovamenti in ambiente alpino carbonatico.
+
+\bibitem[Leonardi et~al.(1982)Leonardi, Rigoni, and Allegranzi]{leonardi1982}
+Piero Leonardi, Giuseppe Rigoni, and Aldo Allegranzi.
+\newblock Le incisioni rupestri della val d'assa sull'altipiano dei sette
+  comuni (vicenza, italia). nota preliminare.
+\newblock \emph{Preistoria Alpina}, 18:\penalty0 175--190, 1982.
+\newblock Museo Tridentino di Scienze Naturali.
+
+\bibitem[Leroi-Gourhan(1965)]{leroi_gourhan1965}
+Andr{\'e} Leroi-Gourhan.
+\newblock \emph{Pr{\'e}histoire de l'Art Occidental}.
+\newblock Mazenod, Paris, 1965.
+\newblock Opera fondamentale per l'analisi sistematica dell'arte parietale
+  paleolitica in Europa occidentale, con trattazione dettagliata di Lascaux
+  (circa 17.000 anni prima dell'anno zero, Magdaleniano: policromia,
+  prospettiva torsionale, composizioni narrative) e Altamira (circa
+  18.000-14.000 anni, uso del rilievo naturale della volta).
+
+\bibitem[Llobera(2004)]{llobera2004}
+Marcos Llobera.
+\newblock Least-cost paths in mountainous terrain.
+\newblock \emph{Computers, Environment and Urban Systems}, 2004.
+\newblock Applicazione dell'algoritmo di Dijkstra a un modello digitale del
+  terreno su un'area montuosa del Galles; il confronto con i sentieri pedonali
+  reali mostra che questi ultimi non seguono il tempo minimo, ma un compromesso
+  legato al costo metabolico dello sforzo, con parametri di costo variabili da
+  sentiero a sentiero.
+
+\bibitem[Llobera and Sluckin(2003)]{llobera2003}
+Marcos Llobera and Timothy~J. Sluckin.
+\newblock Zigzagging: theoretical insights on climbing strategies.
+\newblock \emph{Journal of Theoretical Biology}, 2003.
+
+\bibitem[Luccarini et~al.(2006)Luccarini, Mauri, Ciuti, Lamberti, and
+  Apollonio]{luccarini2006}
+S.~Luccarini, L.~Mauri, S.~Ciuti, P.~Lamberti, and M.~Apollonio.
+\newblock Red deer (\textit{Cervus elaphus}) spatial use in the italian alps:
+  home range patterns, seasonal migrations, and effects of snow and winter
+  feeding.
+\newblock \emph{Ethology Ecology \& Evolution}, 2006.
+
+\bibitem[Mandl(2002)]{mandl2002}
+Franz Mandl.
+\newblock \emph{Felsbilder: Steiermarks Bilder auf Fels von der Steinzeit bis
+  in die Neuzeit}.
+\newblock ANISA, Verein f{\"u}r H{\"o}hlenforschung und alpine Urgeschichte,
+  Haus im Ennstal, 2002.
+\newblock Studio sistematico delle incisioni rupestri della Stiria (Austria)
+  attraverso prospezioni a transetti paralleli su vaste aree montane; la
+  metodologia \`e analoga a quella di Kompatscher per il Trentino-Alto Adige e
+  produce risultati confrontabili per i massicci alpini orientali.
+
+\bibitem[{Ministero della Cultura -- ICCD}(2026)]{mic_iccd2026}
+{Ministero della Cultura -- ICCD}.
+\newblock Catalogo del patrimonio culturale italiano.
+\newblock Portale online \texttt{catalogo.beniculturali.it}, 2026.
+\newblock Schede SAS consultate nell'estate 2026 per il territorio veneto,
+  epoche dal Paleolitico all'età del Ferro.
+
+\bibitem[{Museo Chileno de Arte Precolombino}()]{museo_precolombino_medano}
+{Museo Chileno de Arte Precolombino}.
+\newblock La conquista del mar: las pinturas rupestres de el médano.
+\newblock Pitture rupestri lungo circa 5 km di quebrada nella Cordillera di
+  Taltal, poco a sud della Región de Atacama, sopra il limite della bruma
+  costiera.
+
+\bibitem[{Museo Nacional de Historia Natural de Chile}()]{mnhn_qhapaq_atacama}
+{Museo Nacional de Historia Natural de Chile}.
+\newblock El camino del inca en atacama.
+\newblock Sul tratto del Qhapaq Ñan nel nord del Cile, con tambos di
+  rifornimento; in Cile la rete conta 112 km censiti e 138 siti archeologici
+  associati.
+
+\bibitem[Niemeyer(1985)]{niemeyer1985}
+Hans Niemeyer.
+\newblock El yacimiento de petroglifos las lizas (región de atacama, provincia
+  de copiapó, chile).
+\newblock In Carlos Aldunate, José Berenguer, and Victoria Castro, editors,
+  \emph{Estudios en arte rupestre}, pages 131--171. Museo Chileno de Arte
+  Precolombino, Santiago, 1985.
+
+\bibitem[{Palma di Cesnola}(1993)]{palma_di_cesnola1993}
+Angiolo {Palma di Cesnola}.
+\newblock \emph{Il Paleolitico superiore in Italia: introduzione allo studio}.
+\newblock Garlatti \& Razzai, Firenze, 1993.
+\newblock Manuale di riferimento per il Paleolitico superiore italiano: tratta
+  sistematicamente i siti di Fumane, Paglicci, Romito, Tagliente e gli altri
+  principali complessi, con discussione delle industrie litiche e della
+  produzione artistica mobilière e parietale.
+
+\bibitem[Papakostas et~al.(2026)]{papakostas2026}
+G.~Papakostas et~al.
+\newblock Home range and habitat selection of chamois: A systematic review and
+  meta-analysis.
+\newblock \emph{Mammal Review}, 2026.
+\newblock \doi{10.1111/mam.70023}.
+
+\bibitem[Peresani et~al.(2017)]{peresani2017ghiacciaia}
+Marco Peresani et~al.
+\newblock Grotta della ghiacciaia e altri siti del paleolitico medio e
+  superiore in lessinia: sintesi archeozoologica.
+\newblock \emph{Rivista di Scienze Preistoriche}, 2017.
+
+\bibitem[Pettitt and Pike(2007)]{pettitt2007}
+Paul Pettitt and Alistair~W.~G. Pike.
+\newblock Dating european palaeolithic cave art: progress, prospects, problems.
+\newblock \emph{Journal of Archaeological Method and Theory}, 14\penalty0
+  (1):\penalty0 27--47, 2007.
+\newblock Discute le metodologie di datazione dell'arte parietale paleolitica
+  europea; include la discussione delle incisioni di Creswell Crags
+  (Inghilterra, Magdaleniano), identificate nel 2003 con tecnica di luce
+  radente su pareti gi\`a studiate per decenni senza rilevarle, e le
+  implicazioni metodologiche della scoperta per la ricerca su superfici
+  calcaree non sistematicamente rilevate.
+
+\bibitem[Pini et~al.(2010)Pini, Ravazzi, and Reimer]{pini2010}
+Roberta Pini, Cesare Ravazzi, and Paula Reimer.
+\newblock The vegetation and climate history of the last glacial cycle inferred
+  from a long pollen record from {Lago di Fimon} ({NE Italy}).
+\newblock \emph{Quaternary Science Reviews}, 29:\penalty0 3615--3635, 2010.
+
+\bibitem[Pini et~al.(2022)Pini, Furlanetto, Badino, Ravazzi, et~al.]{pini2022}
+Roberta Pini, Gabriella Furlanetto, Federica Badino, Cesare Ravazzi, et~al.
+\newblock The larch forest-steppe of the {Alpine} foreland during the {Last
+  Glacial Maximum}: a {North Atlantic} teleconnection.
+\newblock \emph{Quaternary Science Reviews}, 281:\penalty0 107431, 2022.
+
+\bibitem[Pontzer(2016)]{pontzer2016}
+Herman Pontzer.
+\newblock A unified theory for the energy cost of legged locomotion.
+\newblock \emph{Biology Letters}, 12\penalty0 (2):\penalty0 20150935, 2016.
+\newblock Propone il modello ARC (Activation-Relaxation and Cross-bridge
+  cycling), validato empiricamente per masse corporee comprese tra 0,78 g e 431
+  kg e per pendenze tra $-24^\circ$ e $90^\circ$, su un ampio ventaglio di
+  specie dagli insetti agli ungulati.
+
+\bibitem[Ravazzi(2005)]{ravazzi2005}
+Cesare Ravazzi.
+\newblock Il tardoglaciale: suddivisione stratigrafica, evoluzione sedimentaria
+  e vegetazionale nelle alpi e in pianura padana.
+\newblock \emph{Studi Trentini di Scienze Naturali, Acta Geologica},
+  82:\penalty0 17--29, 2005.
+
+\bibitem[Ravazzi et~al.(2007)Ravazzi, Peresani, Pini, and Vescovi]{ravazzi2007}
+Cesare Ravazzi, Marco Peresani, Roberta Pini, and Elisa Vescovi.
+\newblock Il tardoglaciale nelle alpi italiane e in pianura padana. evoluzione
+  stratigrafica, storia della vegetazione e del popolamento antropico.
+\newblock \emph{Il Quaternario}, 2007.
+
+\bibitem[Reinhard and Ceruti(2010)]{reinhard2010}
+Johan Reinhard and Mar\'ia~Constanza Ceruti.
+\newblock \emph{Inca Rituals and Sacred Mountains: A Study of the World's
+  Highest Archaeological Sites}.
+\newblock Number~67 in Monograph. Cotsen Institute of Archaeology, University
+  of California, Los Angeles, 2010.
+
+\bibitem[Samartin et~al.(2016)Samartin, Heiri, Kaltenrieder, and
+  Tinner]{samartin2016}
+Stéphanie Samartin, Oliver Heiri, Petra Kaltenrieder, and Willy Tinner.
+\newblock Reconstruction of {July} temperatures for the {Central Alps} during
+  the {Lateglacial} and early {Holocene} using chironomid records from {Lago
+  della Costa}.
+\newblock \emph{Quaternary Science Reviews}, 143:\penalty0 45--59, 2016.
+
+\bibitem[{Soprintendenza Archeologia Belle Arti e Paesaggio per le Province di
+  Como, Lecco, Monza Brianza, Pavia, Sondrio e Varese} and {Istituto
+  Archeologico Valtellinese}(2024)]{tresero2024}
+{Soprintendenza Archeologia Belle Arti e Paesaggio per le Province di Como,
+  Lecco, Monza Brianza, Pavia, Sondrio e Varese} and {Istituto Archeologico
+  Valtellinese}.
+\newblock Incisioni rupestri dell'et\`a del bronzo a 3.000 m di quota sul pizzo
+  tresero (alta valtellina, parco nazionale dello stelvio), 2024.
+\newblock Scoperta segnalata da un escursionista nel 2017, ufficializzata nel
+  2024. Le incisioni geometriche e figurative, databili all'et\`a del Bronzo
+  medio (circa 3.600--3.200 anni prima dell'anno zero), costituiscono le pi\`u
+  alte incisioni rupestri note in Europa. La loro emersione \`e stata resa
+  possibile dal ritiro del ghiacciaio del Tresero, che le aveva coperte per
+  millenni.
+
+\bibitem[{UNESCO}(1979)]{unesco1979}
+{UNESCO}.
+\newblock Rock drawings of valcamonica.
+\newblock Technical Report~94, World Heritage List, 1979.
+
+\bibitem[{UNESCO World Heritage Centre}(2014)]{unesco_qhapaqnan}
+{UNESCO World Heritage Centre}.
+\newblock Qhapaq Ñan, andean road system.
+\newblock \url{https://whc.unesco.org/en/list/1459/}, 2014.
+\newblock Iscrizione alla lista del patrimonio mondiale, 2014: 137 aree
+  componenti e 308 siti archeologici associati, per 616,06 km di percorso
+  censito; il tracciato collegava zone costiere, deserti assoluti e crinali
+  andini oltre i 6.600 m di quota.
+
+\bibitem[{Vari}()]{qhapaq_atacama_minas}
+{Vari}.
+\newblock Comunidades mineras prehispánicas de pequeña escala y su
+  conectividad con el qhapaq Ñan, desierto de atacama.
+\newblock Su insediamenti minerari preispanici (malachite, turchese, pigmento
+  rosso) collegati alla rete del Qhapaq Ñan nel deserto di Atacama.
+
+\bibitem[Visentin and Carrer(2017)]{visentin2017}
+Davide Visentin and Francesco Carrer.
+\newblock Evaluating mesolithic settlement patterns in mountain environments
+  (dolomites, eastern italian alps): the role of research biases and locational
+  strategies.
+\newblock \emph{Archeologia e Calcolatori}, 28\penalty0 (1):\penalty0 129--145,
+  2017.
+\newblock \doi{10.19282/AC.28.1.2017.08}.
+
+\bibitem[Wakankar(1993)]{wakankar1985}
+Vishnu~Shridhar Wakankar.
+\newblock Bhimbetka: the prehistoric paradise.
+\newblock In Michel Lorblanchet and Paul~G. Bahn, editors, \emph{Rock Art
+  Studies: the Post-Stylistic Era}. Oxbow Books, Oxford, 1993.
+\newblock Presenta i ripari di Bhimbetka (Madhya Pradesh, India), con pitture
+  rupestri che documentano una continuit\`a di oltre 30.000 anni; le fasi pi\`u
+  antiche sono databili al Paleolitico superiore mentre le pi\`u recenti
+  risalgono all'epoca storica. Il sito \`e iscritto nel patrimonio mondiale
+  UNESCO dal 2003.
+
+\bibitem[Zilh{\~a}o(1995)]{zilhao1995}
+Jo{\~a}o Zilh{\~a}o.
+\newblock The age of the c{\^o}a valley (portugal) rock-art: validation of
+  archaeological dating to the palaeolithic and refutation of ``scientific''
+  dating to historic or proto-historic times.
+\newblock \emph{Antiquity}, 69\penalty0 (266):\penalty0 883--901, 1995.
+\newblock Dimostra l'attribuzione paleolitica (22.000--10.000 anni prima
+  dell'anno zero) delle incisioni della Valle del C{\^o}a (Portogallo), figure
+  di aurochs, cavalli e cervi su scisto metamorfico; confuta le datazioni
+  storiche proposte dall'EDP nel contesto dello sbarramento idroelettrico. Il
+  sito \`e iscritto nel patrimonio mondiale UNESCO dal 1998.
+
+\end{thebibliography}
