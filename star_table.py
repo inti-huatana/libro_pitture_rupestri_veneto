@@ -33,9 +33,49 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 CACHE_SUFFIX = ".cache.parquet"
+
+
+def pivot_epoch_star(df: pd.DataFrame, value_cols: list[str]):
+    """Reshape a long trajectory table into (epoch, star) arrays.
+
+    Does the job of a chain of pandas pivots, but in one pass over integer
+    codes and with a single allocation per column, which is what makes it
+    usable once the catalogue reaches naked-eye depth: at some nine thousand
+    stars a pivot per quantity costs a sort and a full intermediate frame each
+    time, and every program here wants four or five quantities.
+
+    Combinations absent from the table stay NaN rather than raising, so a star
+    missing from some epochs does not bring the reshape down.
+    """
+    ep = np.sort(df["epoch"].unique())
+    hp = np.sort(df["HIP"].unique())
+    ie = np.searchsorted(ep, df["epoch"].to_numpy())
+    ih = np.searchsorted(hp, df["HIP"].to_numpy())
+    out = {}
+    for c in value_cols:
+        a = np.full((ep.size, hp.size), np.nan)
+        a[ie, ih] = pd.to_numeric(df[c], errors="coerce").to_numpy(dtype=float)
+        out[c] = a
+    return ep.astype(float), hp.astype(np.int64), out
+
+
+def star_labels(df: pd.DataFrame) -> dict[int, str]:
+    """One display name per HIP: proper name, else Bayer, else the number."""
+    have = [c for c in ("NAME", "Bayer") if c in df.columns]
+    if not have:
+        return {int(h): f"HIP {int(h)}" for h in df["HIP"].unique()}
+    first = df.groupby("HIP")[have].first()
+    out = {}
+    for hip, r in first.iterrows():
+        nm = str(r["NAME"]).strip() if "NAME" in have else ""
+        by = str(r["Bayer"]).strip() if "Bayer" in have else ""
+        out[int(hip)] = (nm if nm and nm != "nan"
+                         else by if by and by != "nan" else f"HIP {int(hip)}")
+    return out
 
 
 def cache_path_for(path: Path) -> Path:

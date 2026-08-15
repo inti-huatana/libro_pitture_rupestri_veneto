@@ -62,7 +62,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (read_star_table, normalise_epoch, pivot_epoch_star,
+                        star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -81,21 +82,28 @@ ASTERISMS: dict[str, list[int]] = {
     "Esagono Invernale":       [32349, 37279, 37826, 24608, 21421, 24436],
     "Cintura di Orione":       [25930, 26311, 26727],
     "Orione":                  [27989, 25336, 24436, 27366, 25930, 26311, 26727],
-    "Pleiadi":                 [17702, 17847, 17499, 17573, 17608, 17531, 17489],
+    "Spada di Orione":         [26176, 26197, 26207, 26241],
+    "Pleiadi":                 [17702, 17847, 17499, 17573, 17608, 17531,
+                                17489, 17579, 17851],
     "Iadi":                    [21421, 20205, 20455, 20889, 20894, 20885],
     "Croce del Sud":           [60718, 62434, 61084, 59747, 60260],
     "Puntatori del Centauro":  [71683, 68702],
     "Falsa Croce":             [42913, 45941, 45556, 41037],
     "Uncino dello Scorpione":  [80763, 85927, 85696, 86228, 82396, 81266,
                                 80112, 78401, 78820, 78265],
-    "Teiera del Sagittario":   [90185, 92855, 93506, 89931, 90496, 88635],
+    "Teiera del Sagittario":   [90185, 92855, 93506, 89931, 90496, 88635,
+                                93864, 92041],
     "Croce del Nord":          [102098, 100453, 102488, 97165, 95947],
     "Quadrato di Pegaso":      [113963, 113881, 1067, 677],
-    "Testa del Drago":         [87833, 85670, 87585, 87833],
+    "Testa del Drago":         [87833, 85670, 87585, 85819],
     "Falce del Leone":         [49669, 50583, 54872, 57632],
-    "Corona Boreale":          [76267, 75695, 76952, 77512, 78159, 78493],
+    "Corona Boreale":          [76267, 75695, 76952, 77512, 78159, 78493,
+                                76127],
     "Vela dell'Argo":          [42913, 44816, 45941, 39953],
-    "Cefeo":                   [105199, 106032, 109492, 110991, 112724],
+    "Cefeo":                   [105199, 106032, 109492, 110991, 109857],
+    "Bara di Giobbe":          [101421, 101769, 102532, 102281],
+    "Cintola di Andromeda":    [677, 5447, 9640],
+    "Trapezio di Auriga":      [24608, 23015, 25428, 28360],
 }
 
 # Members of the Ursa Major moving group among the Dipper's seven. Used only to
@@ -124,19 +132,30 @@ def gnomonic(v: np.ndarray, centre: np.ndarray) -> np.ndarray:
     great circles into straight lines, so a figure judged straight by eye stays
     straight on the page. Over the few degrees an asterism spans the difference
     is small, but the choice should still be the right one.
+
+    Batched: v may be (n, 3) with a single centre, or (m, n, 3) with (m, 3)
+    centres, one per epoch. The catalogue is deep enough now that every one of
+    these has to run over whole epoch axes at once rather than in a loop.
     """
-    c = centre / np.linalg.norm(centre)
-    north = np.array([0.0, 0.0, 1.0])
-    e = np.cross(north, c)
-    n_e = np.linalg.norm(e)
-    if n_e < 1e-9:                       # centroid at a pole: any basis will do
-        e = np.array([1.0, 0.0, 0.0])
-        n_e = 1.0
-    e = e / n_e
+    single = (v.ndim == 2)
+    v = v[None] if single else v
+    c = np.atleast_2d(centre)
+    c = c / np.linalg.norm(c, axis=-1, keepdims=True)
+
+    e = np.cross(np.array([0.0, 0.0, 1.0])[None, :], c)
+    n_e = np.linalg.norm(e, axis=-1, keepdims=True)
+    # A centroid exactly at a celestial pole leaves the east direction
+    # undefined; any basis will do there and this picks one.
+    e = np.where(n_e > 1e-9, e / np.where(n_e > 1e-9, n_e, 1.0),
+                 np.array([1.0, 0.0, 0.0])[None, :])
     n = np.cross(c, e)
-    w = v @ c
+
+    w = np.einsum("mnk,mk->mn", v, c)
     with np.errstate(divide="ignore", invalid="ignore"):
-        return np.degrees(np.stack([(v @ e) / w, (v @ n) / w], axis=-1))
+        x = np.stack([np.einsum("mnk,mk->mn", v, e) / w,
+                      np.einsum("mnk,mk->mn", v, n) / w], axis=-1)
+    x = np.degrees(x)
+    return x[0] if single else x
 
 
 def procrustes_residuals(x: np.ndarray, x0: np.ndarray) -> np.ndarray:
@@ -145,23 +164,39 @@ def procrustes_residuals(x: np.ndarray, x0: np.ndarray) -> np.ndarray:
     Reflection is excluded by forcing the determinant of the rotation positive:
     a mirrored figure is a different figure, and letting the fit flip it would
     hide exactly the deformation being looked for.
+
+    Batched over the leading axis of x, with x0 the single reference
+    configuration; numpy's SVD stacks over leading axes, so the whole epoch
+    range is one call.
     """
-    a = x - x.mean(axis=0)
-    b = x0 - x0.mean(axis=0)
-    u, s, vt = np.linalg.svd(a.T @ b)
-    d = np.sign(np.linalg.det(u @ vt))
-    r = u @ np.diag([1.0, d]) @ vt
-    denom = float(np.sum(a * a))
-    scale = float(np.sum(s * np.array([1.0, d]))) / denom if denom > 0 else 1.0
-    return np.linalg.norm(a @ r * scale - b, axis=1)
+    single = (x.ndim == 2)
+    x = x[None] if single else x
+    a = x - x.mean(axis=1, keepdims=True)
+    b = x0 - x0.mean(axis=0, keepdims=True)
+
+    m = np.einsum("mni,nj->mij", a, b)
+    u, s, vt = np.linalg.svd(m)
+    d = np.sign(np.linalg.det(np.einsum("mij,mjk->mik", u, vt)))
+    flip = np.stack([np.ones_like(d), d], axis=-1)            # (m, 2)
+    r = np.einsum("mij,mj,mjk->mik", u, flip, vt)
+    denom = np.sum(a * a, axis=(1, 2))
+    scale = np.where(denom > 0, np.sum(s * flip, axis=-1) / np.where(
+        denom > 0, denom, 1.0), 1.0)
+    res = np.linalg.norm(np.einsum("mni,mij->mnj", a, r) * scale[:, None, None]
+                         - b[None], axis=-1)
+    return res[0] if single else res
 
 
-def figure_size(x: np.ndarray) -> float:
+def figure_size(x: np.ndarray) -> np.ndarray:
     """Greatest distance between two members, degrees: the figure's own scale."""
-    if x.shape[0] < 2:
-        return np.nan
-    d = np.linalg.norm(x[:, None, :] - x[None, :, :], axis=2)
-    return float(d.max())
+    single = (x.ndim == 2)
+    x = x[None] if single else x
+    if x.shape[1] < 2:
+        out = np.full(x.shape[0], np.nan)
+        return float(out[0]) if single else out
+    d = np.linalg.norm(x[:, :, None, :] - x[:, None, :, :], axis=-1)
+    out = d.reshape(x.shape[0], -1).max(axis=1)
+    return float(out[0]) if single else out
 
 
 def drift_series(V: np.ndarray, i_ref: int):
@@ -171,21 +206,15 @@ def drift_series(V: np.ndarray, i_ref: int):
     configuration is the one at i_ref, normally the present.
     """
     n_ep, n_st, _ = V.shape
-    c0 = V[i_ref].sum(axis=0)
-    x0 = gnomonic(V[i_ref], c0)
+    x0 = gnomonic(V[i_ref], V[i_ref].sum(axis=0))
     size0 = figure_size(x0)
 
-    worst = np.zeros(n_ep)
-    scale = np.ones(n_ep)
-    for i in range(n_ep):
-        c = V[i].sum(axis=0)
-        x = gnomonic(V[i], c)
-        if n_st >= 3:
-            worst[i] = float(procrustes_residuals(x, x0).max())
-        else:
-            worst[i] = 0.0            # a pair has no shape, only a separation
-        s = figure_size(x)
-        scale[i] = s / size0 if size0 and np.isfinite(size0) else np.nan
+    x = gnomonic(V, V.sum(axis=1))
+    worst = (procrustes_residuals(x, x0).max(axis=1) if n_st >= 3
+             else np.zeros(n_ep))       # a pair has no shape, only a separation
+    sizes = figure_size(x)
+    scale = (sizes / size0 if size0 and np.isfinite(size0)
+             else np.full(n_ep, np.nan))
     return worst, scale, size0
 
 
@@ -240,27 +269,26 @@ def main() -> None:
                             "Vmag", "NAME", "Bayer"])
     traj = normalise_epoch(traj).drop_duplicates(["HIP", "epoch"])
 
-    ra_w = traj.pivot(index="epoch", columns="HIP", values="ra_deg").sort_index()
-    de_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    mg_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
-    epochs = ra_w.index.to_numpy(dtype=float)
-    hips = ra_w.columns.to_numpy()
+    epochs, hips, arr = pivot_epoch_star(traj, ["ra_deg", "dec_deg", "Vmag"])
     index = {int(h): k for k, h in enumerate(hips)}
-    UV = to_unit(ra_w.to_numpy(dtype=float), de_w.to_numpy(dtype=float))
-    MG = mg_w.to_numpy(dtype=float)
+    UV = to_unit(arr["ra_deg"], arr["dec_deg"])
+    MG = arr["Vmag"]
     i_ref = int(np.argmin(np.abs(epochs - args.ref_epoch)))
     log(f"  {hips.size} stelle, {epochs.size} epoche "
         f"[{epochs.min():+.1f}, {epochs.max():+.1f}] kyr; "
         f"riferimento a {epochs[i_ref]:+.1f} kyr")
 
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    labels = {}
-    for hip, r in lab.iterrows():
-        nm, by = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        labels[int(hip)] = (nm if nm and nm != "nan"
-                            else by if by and by != "nan" else f"HIP {int(hip)}")
+    labels = star_labels(traj)
+    bayer = {}
+    if "Bayer" in traj.columns:
+        for hip, b in traj.groupby("HIP")["Bayer"].first().items():
+            bayer[int(hip)] = str(b).strip()
 
     # ---- membership --------------------------------------------------------
+    # Printed in full, with the Bayer letter of every member the catalogue
+    # resolved. A wrong HIP in the list above shows up here as a star from the
+    # wrong constellation, which is the only cheap check there is on a hand-made
+    # membership table.
     members, mem_rows = {}, []
     for name, hl in ASTERISMS.items():
         seen, keep, missing = set(), [], []
@@ -273,14 +301,17 @@ def main() -> None:
         for h in keep:
             mem_rows.append({"asterismo": name, "HIP": h,
                              "star": labels.get(h, ""),
+                             "Bayer": bayer.get(h, ""),
                              "Vmag": float(MG[i_ref, index[h]]),
                              "presente": True})
         for h in missing:
             mem_rows.append({"asterismo": name, "HIP": h, "star": "",
-                             "Vmag": np.nan, "presente": False})
+                             "Bayer": "", "Vmag": np.nan, "presente": False})
+        log(f"  {name}: " + ", ".join(
+            f"{bayer.get(h) or labels.get(h, h)}"
+            f"({MG[i_ref, index[h]]:.1f})" for h in keep))
         if missing:
-            log(f"  {name}: mancano dal catalogo {missing} "
-                f"({len(keep)} membri su {len(seen)})")
+            log(f"      assenti dal catalogo: {missing}")
     pd.DataFrame(mem_rows).to_csv(outdir / "members.csv", index=False)
 
     usable = {k: v for k, v in members.items() if len(v) >= 2}
@@ -332,12 +363,9 @@ def main() -> None:
         hl = usable["Grande Carro"]
         cols = [index[h] for h in hl]
         V = UV[:, cols, :]
-        c0 = V[i_ref].sum(axis=0)
-        x0 = gnomonic(V[i_ref], c0)
-        res_end = np.zeros(len(hl))
-        for i in range(epochs.size):
-            x = gnomonic(V[i], V[i].sum(axis=0))
-            res_end = np.maximum(res_end, procrustes_residuals(x, x0))
+        x0 = gnomonic(V[i_ref], V[i_ref].sum(axis=0))
+        res_end = procrustes_residuals(gnomonic(V, V.sum(axis=1)),
+                                       x0).max(axis=0)
         log("")
         log("  Verifica sul Grande Carro: chi si sposta e chi no")
         for k, h in enumerate(hl):
@@ -396,21 +424,20 @@ def main() -> None:
     # accurate to second order and the two nulls stay comparable.
     log("")
     log("Moti prestati ...")
-    disp = np.empty((epochs.size, bright.size, 2))
-    for k in range(bright.size):
-        disp[:, k, :] = gnomonic(UVR[:, k, :], ref_dirs[k])
+    # Each donor's own displacement is read in the plane tangent at where that
+    # donor sits now, so what is transplanted is its motion and not its place.
+    disp = np.swapaxes(
+        gnomonic(np.swapaxes(UVR, 0, 1), ref_dirs), 0, 1)
     swap_rows = []
     for name, hl in usable.items():
         cols = [index[h] for h in hl]
-        c0 = UV[i_ref, cols, :].sum(axis=0)
-        x0 = gnomonic(UV[i_ref, cols, :], c0)
+        x0 = gnomonic(UV[i_ref, cols, :], UV[i_ref, cols, :].sum(axis=0))
         thr = float(life.loc[life["asterismo"] == name, "soglia_deg"].iloc[0])
         for _ in range(max(args.n_random // 4, 25)):
             donors = rng.choice(bright.size, size=len(hl), replace=False)
             x = x0[None, :, :] + disp[:, donors, :]
-            worst = np.array([float(procrustes_residuals(x[i], x0).max())
-                              if len(hl) >= 3 else 0.0
-                              for i in range(epochs.size)])
+            worst = (procrustes_residuals(x, x0).max(axis=1) if len(hl) >= 3
+                     else np.zeros(epochs.size))
             swap_rows.append({"asterismo": name,
                               "vita_kyr": lifetime(epochs, worst, i_ref, thr),
                               "residuo_max_deg": float(worst.max())})

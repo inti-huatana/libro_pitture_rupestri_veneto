@@ -77,7 +77,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (read_star_table, normalise_epoch, pivot_epoch_star,
+                        star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -166,6 +167,25 @@ def half_arc(dec_rad, lat_deg: float, alt_deg: float) -> np.ndarray:
     with np.errstate(divide="ignore", invalid="ignore"):
         c = np.where(np.abs(den) > 1e-12, num / den, np.inf)
     return np.where(c <= -1.0, math.pi, np.where(c >= 1.0, 0.0, np.arccos(np.clip(c, -1.0, 1.0))))
+
+
+def half_arc_grid(dec_rad, lat_deg: float, alt_deg) -> np.ndarray:
+    """half_arc for every pairing of a declination with an altitude.
+
+    Returns shape (len(dec), len(alt)). The loop this replaces ran once per
+    star per epoch, which was tolerable at five hundred stars and is not at
+    nine thousand; the arithmetic is identical, only broadcast.
+    """
+    p = math.radians(lat_deg)
+    d = np.asarray(dec_rad, dtype=float)[:, None]
+    a = np.radians(np.asarray(alt_deg, dtype=float))[None, :]
+    num = np.sin(a) - math.sin(p) * np.sin(d)
+    den = math.cos(p) * np.cos(d)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        c = np.where(np.abs(den) > 1e-12, num / den, np.inf)
+    return np.where(c <= -1.0, math.pi,
+                    np.where(c >= 1.0, 0.0,
+                             np.arccos(np.clip(c, -1.0, 1.0))))
 
 
 def arc_overlap(sep, a1, a2):
@@ -415,18 +435,8 @@ def main() -> None:
     if traj.empty:
         raise SystemExit("Nessuna riga di traiettoria nell'intervallo chiesto.")
 
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    labels = {}
-    for hip, r in lab.iterrows():
-        nm, by = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        labels[int(hip)] = (nm if nm and nm != "nan"
-                            else by if by and by != "nan" else f"HIP {int(hip)}")
-
-    ra_w = traj.pivot(index="epoch", columns="HIP", values="ra_deg").sort_index()
-    de_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    mg_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
-    st_ep = ra_w.index.to_numpy(dtype=float)
-    hips = ra_w.columns.to_numpy()
+    labels = star_labels(traj)
+    st_ep, hips, arr = pivot_epoch_star(traj, ["ra_deg", "dec_deg", "Vmag"])
     log(f"  {hips.size} stelle V<{args.vmax}, {st_ep.size} epoche")
     log(f"  latitudine {args.lat:.1f}°, altezza minima {args.h_min:.1f}°")
 
@@ -436,9 +446,9 @@ def main() -> None:
     obs_n = np.zeros((n_ep, n_st))          # nights with any observable time
     up_h = np.zeros((n_ep, n_st))           # hours above h_min, dark or not
 
-    ra_a = np.radians(ra_w.to_numpy(dtype=float))
-    de_a = np.radians(de_w.to_numpy(dtype=float))
-    mg_a = mg_w.to_numpy(dtype=float)
+    ra_a = np.radians(arr["ra_deg"])
+    de_a = np.radians(arr["dec_deg"])
+    mg_a = arr["Vmag"]
 
     for i in range(n_ep):
         lam, days, _ = year_weights(float(st_ep[i]), args.steps)
@@ -447,9 +457,7 @@ def main() -> None:
 
         # Bright arc of the Sun, one half-width per day and per magnitude.
         # h_bright[d, s]: the Sun is above -AV(s) for |H| <= h_bright.
-        h_bright = np.empty((lam.size, n_st))
-        for s in range(n_st):
-            h_bright[:, s] = half_arc(sdec, args.lat, -float(av_i[s]))
+        h_bright = half_arc_grid(sdec, args.lat, -av_i)
 
         # Arc during which the star clears h_min; it does not depend on the day.
         h_star = half_arc(de_a[i], args.lat, args.h_min)         # (n_st,)

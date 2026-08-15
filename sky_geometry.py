@@ -71,7 +71,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (read_star_table, normalise_epoch, pivot_epoch_star,
+                        star_labels)
 from night_visibility import (half_arc, arc_overlap, year_weights,
                               sun_position, obliquity_series)
 
@@ -210,21 +211,9 @@ def main() -> None:
                             "Vmag", "NAME", "Bayer"])
     traj = normalise_epoch(traj).drop_duplicates(["HIP", "epoch"])
 
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    labels = {}
-    for hip, r in lab.iterrows():
-        nm, by = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        labels[int(hip)] = (nm if nm and nm != "nan"
-                            else by if by and by != "nan" else f"HIP {int(hip)}")
-
-    ra_w = traj.pivot(index="epoch", columns="HIP", values="ra_deg").sort_index()
-    de_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    mg_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
-    epochs = ra_w.index.to_numpy(dtype=float)
-    hips = ra_w.columns.to_numpy()
-    RA = ra_w.to_numpy(dtype=float)
-    DE = de_w.to_numpy(dtype=float)
-    MG = mg_w.to_numpy(dtype=float)
+    labels = star_labels(traj)
+    epochs, hips, arr = pivot_epoch_star(traj, ["ra_deg", "dec_deg", "Vmag"])
+    RA, DE, MG = arr["ra_deg"], arr["dec_deg"], arr["Vmag"]
     log(f"  {hips.size} stelle, {epochs.size} epoche "
         f"[{epochs.min():+.1f}, {epochs.max():+.1f}] kyr")
 
@@ -389,12 +378,23 @@ def main() -> None:
     pts = pd.DataFrame(rows)
     pts.to_csv(outdir / "ecliptic_pole_and_equinox.csv", index=False,
                float_format="%.4f")
+    # With a catalogue this deep, "no bright star near it" only means anything
+    # against the distance a random point would give. For N stars spread over
+    # the sphere the median nearest-neighbour distance is about sqrt(4 ln2 / N)
+    # radians, and quoting it turns the remark into a measurement.
+    n_bright = int(np.sum(MG[now] <= args.vmax))
+    expect = math.degrees(math.sqrt(4.0 * math.log(2.0) / max(n_bright, 1)))
+    log(f"  Stelle V<{args.vmax} nel catalogo: {n_bright}; per un punto a caso "
+        f"la piu' vicina disterebbe {expect:.2f}° (mediana attesa)")
     log(f"  Polo dell'eclittica: la stella V<{args.vmax} piu' vicina dista "
         f"da {pts['ecl_pole_nearest_sep_deg'].min():.2f}° a "
         f"{pts['ecl_pole_nearest_sep_deg'].max():.2f}°, "
-        f"mediana {pts['ecl_pole_nearest_sep_deg'].median():.2f}°")
-    log(f"    (per confronto, la stella polare attuale dista 0.7° dal polo "
-        f"celeste: il punto davvero fisso del cielo e' molto piu' vuoto)")
+        f"mediana {pts['ecl_pole_nearest_sep_deg'].median():.2f}° "
+        f"({pts['ecl_pole_nearest_sep_deg'].median() / expect:.2f} volte "
+        f"l'attesa)")
+    log(f"    per confronto la Polare dista 0.74° dal polo celeste, "
+        f"{0.74 / expect:.3f} volte l'attesa: il polo mobile ha una stella "
+        f"eccezionale, quello fisso no")
     log(f"  Punto vernale: stella piu' vicina fra "
         f"{pts['vernal_nearest_sep_deg'].min():.2f}° e "
         f"{pts['vernal_nearest_sep_deg'].max():.2f}°")

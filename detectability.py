@@ -235,6 +235,10 @@ def main() -> None:
         description="What is detectable by eye, and after how many generations.")
     p.add_argument("--catalog", default="hip_mag4.csv",
                    help="star catalogue, for the proper-motion rows")
+    p.add_argument("--pm-vmax", type=float, default=4.0,
+                   help="faintest star allowed to carry the proper-motion row: "
+                        "past this an eye cannot keep a star apart from its "
+                        "neighbours, so it cannot serve as a reference")
     p.add_argument("--lat", type=float, default=45.5,
                    help="latitude the horizon quantities are worked out at")
     p.add_argument("--epoch", type=float, default=0.0,
@@ -297,11 +301,26 @@ def main() -> None:
         # pmra in these catalogues is the great-circle rate, already carrying
         # the cos(dec) factor, so the two components combine in quadrature.
         c["pm_arcsec_per_yr"] = np.hypot(c["pmra"], c["pmde"]) / 1000.0
-        pm = c[["HIP", "NAME", "Bayer", "Vmag", "pm_arcsec_per_yr"]].copy()
-        pm = pm.sort_values("pm_arcsec_per_yr", ascending=False)
-        log(f"Moti propri da {cat.name}: {len(pm)} stelle, mediana "
+        pm_all = c[["HIP", "NAME", "Bayer", "Vmag", "pm_arcsec_per_yr"]].copy()
+        pm_all = pm_all.sort_values("pm_arcsec_per_yr", ascending=False)
+        # The catalogue now reaches past the eye's limit, and the fastest
+        # movers in it are faint red dwarfs that no one could have used as a
+        # reference. The ledger row is therefore built at the magnitude beyond
+        # which a star cannot be told apart from its neighbours, and the deeper
+        # number is reported separately rather than quietly substituted.
+        pm = pm_all[pm_all["Vmag"] <= args.pm_vmax].copy()
+        log(f"Moti propri da {cat.name}: {len(pm_all)} stelle in tutto, "
+            f"{len(pm)} con V<{args.pm_vmax}")
+        log(f"  V<{args.pm_vmax}: mediana "
             f"{pm['pm_arcsec_per_yr'].median():.3f}\"/anno, massimo "
             f"{pm['pm_arcsec_per_yr'].max():.3f}\"/anno")
+        r_deep = pm_all.iloc[0]
+        nm_deep = str(r_deep["NAME"]).strip()
+        nm_deep = nm_deep if nm_deep and nm_deep != "nan" else str(
+            r_deep["Bayer"]).strip()
+        log(f"  senza limite: {nm_deep} V {r_deep['Vmag']:.1f} a "
+            f"{r_deep['pm_arcsec_per_yr']:.3f}\"/anno "
+            f"(troppo debole per essere un riferimento)")
         for _, r in pm.head(8).iterrows():
             nm = str(r["NAME"]).strip()
             nm = nm if nm and nm != "nan" else str(r["Bayer"]).strip()
