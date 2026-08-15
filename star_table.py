@@ -49,7 +49,13 @@ def pivot_epoch_star(df: pd.DataFrame, value_cols: list[str]):
     time, and every program here wants four or five quantities.
 
     Combinations absent from the table stay NaN rather than raising, so a star
-    missing from some epochs does not bring the reshape down.
+    missing from some epochs does not bring the reshape down. This also makes
+    it safe where pivot is not: a duplicated (epoch, HIP) pair raises there and
+    here merely overwrites, and duplicates become likelier as the catalogue
+    deepens and multiple systems bring repeated identifiers.
+
+    Text columns -- the visibility class is one -- are detected and returned as
+    object arrays filled with None, instead of being coerced to NaN.
     """
     ep = np.sort(df["epoch"].unique())
     hp = np.sort(df["HIP"].unique())
@@ -57,8 +63,12 @@ def pivot_epoch_star(df: pd.DataFrame, value_cols: list[str]):
     ih = np.searchsorted(hp, df["HIP"].to_numpy())
     out = {}
     for c in value_cols:
-        a = np.full((ep.size, hp.size), np.nan)
-        a[ie, ih] = pd.to_numeric(df[c], errors="coerce").to_numpy(dtype=float)
+        if pd.api.types.is_numeric_dtype(df[c]):
+            a = np.full((ep.size, hp.size), np.nan)
+            a[ie, ih] = pd.to_numeric(df[c], errors="coerce").to_numpy(dtype=float)
+        else:
+            a = np.full((ep.size, hp.size), None, dtype=object)
+            a[ie, ih] = df[c].to_numpy()
         out[c] = a
     return ep.astype(float), hp.astype(np.int64), out
 

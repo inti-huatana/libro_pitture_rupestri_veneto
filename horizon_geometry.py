@@ -51,7 +51,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (normalise_epoch, pivot_epoch_star,
+                        read_star_table, star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -126,19 +127,9 @@ def main() -> None:
                             "NAME", "Bayer"])
     traj = normalise_epoch(traj).drop_duplicates(["HIP", "epoch"])
 
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    labels = {}
-    for hip, r in lab.iterrows():
-        nm, by = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        labels[int(hip)] = (nm if nm and nm != "nan"
-                            else by if by and by != "nan" else f"HIP {int(hip)}")
-
-    dec_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    mag_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
-    epochs = dec_w.index.to_numpy(dtype=float)
-    hips = dec_w.columns.to_numpy()
-    dec = dec_w.to_numpy(dtype=float)
-    mag = mag_w.to_numpy(dtype=float)
+    labels = star_labels(traj)
+    epochs, hips, _arr = pivot_epoch_star(traj, ["dec_deg", "Vmag"])
+    dec, mag = _arr["dec_deg"], _arr["Vmag"]
 
     # Put the orientation table on the star epochs.
     def on_epochs(col):

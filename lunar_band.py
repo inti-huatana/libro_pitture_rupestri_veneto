@@ -38,7 +38,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (normalise_epoch, pivot_epoch_star,
+                        read_star_table, star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -96,19 +97,9 @@ def main() -> None:
                             "ecl_lon_deg", "Vmag", "NAME", "Bayer"])
     traj = normalise_epoch(traj).drop_duplicates(["HIP", "epoch"])
 
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    labels = {}
-    for hip, r in lab.iterrows():
-        nm, by = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        labels[int(hip)] = (nm if nm and nm != "nan"
-                            else by if by and by != "nan" else f"HIP {int(hip)}")
-
-    b_w = traj.pivot(index="epoch", columns="HIP", values="ecl_lat_deg").sort_index()
-    m_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
-    epochs = b_w.index.to_numpy(dtype=float)
-    hips = b_w.columns.to_numpy()
-    beta = b_w.to_numpy(dtype=float)
-    mag = m_w.to_numpy(dtype=float)
+    labels = star_labels(traj)
+    epochs, hips, _arr = pivot_epoch_star(traj, ["ecl_lat_deg", "Vmag"])
+    beta, mag = _arr["ecl_lat_deg"], _arr["Vmag"]
     log(f"  {hips.size} stelle, {epochs.size} epoche "
         f"[{epochs.min():+.1f}, {epochs.max():+.1f}] kyr")
     log(f"  fascia: |lat. eclittica| < {BAND_CENTRAL_DEG:.2f}° centrale, "

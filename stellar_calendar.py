@@ -320,6 +320,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--Tmin",   type=float, default=-100.0, help="Min epoch in kyr (200 or -200 both mean -200 kyr BP)")
     p.add_argument("--Tmax",   type=float, default=0.0,    help="Max epoch in kyr")
     p.add_argument("--dt",     type=float, default=1.0,    help="Timestep in kyr")
+    p.add_argument("--vmax",   type=float, default=4.0,
+                   help="Faintest star admitted. The catalogue now reaches "
+                        "Hp 6.5, past the limit at which a star can be told "
+                        "from its neighbours by eye, and a calendar marker "
+                        "that cannot be identified is not a marker.")
     args = p.parse_args()
     # Accept positive Tmin as meaning negative (years before present)
     if args.Tmin > args.Tmax:
@@ -369,7 +374,8 @@ def _season_label(day, epoch_kyr) -> str:
 
 
 def load_data(input_path: Path, lat_deg: float,
-              tmin: float, tmax: float, dt: float) -> pd.DataFrame:
+              tmin: float, tmax: float, dt: float,
+              vmax: float = 4.0) -> pd.DataFrame:
     log(f"Loading {input_path} ...")
     df = pd.read_csv(input_path, low_memory=False)
     log(f"  Raw rows: {len(df):,}")
@@ -379,6 +385,15 @@ def load_data(input_path: Path, lat_deg: float,
 
     df = df.drop_duplicates(subset=["HIP", "epoch_kyr"], keep="first")
     log(f"  After dedup: {len(df):,}")
+
+    # Applied first, because it is the cut that shrinks the table most and
+    # every later step is proportional to what survives it. A calendar marker
+    # has to be recognised again the following year, and past the fourth
+    # magnitude a star cannot be told from the ones around it.
+    if "Vmag" in df.columns:
+        df = df[df["Vmag"] <= vmax]
+        log(f"  After V<{vmax}: {len(df):,} rows, "
+            f"{df['HIP'].nunique()} stars")
 
     # Select epochs matching tmin..tmax at step dt
     n_steps = round((tmax - tmin) / dt)
@@ -672,7 +687,8 @@ def main() -> None:
     out_dir = Path(args.outdir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    df = load_data(input_path, args.lat, args.Tmin, args.Tmax, args.dt)
+    df = load_data(input_path, args.lat, args.Tmin, args.Tmax, args.dt,
+                   args.vmax)
 
     log("Building heliacal table ...")
     heliacal = build_heliacal_table(df)

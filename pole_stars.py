@@ -52,7 +52,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (normalise_epoch, pivot_epoch_star,
+                        read_star_table, star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -69,17 +70,6 @@ ERROR_LEVELS = (1.0, 2.0, 5.0, 10.0)
 
 def log(msg: str) -> None:
     print(f"[{datetime.now(UTC).strftime('%H:%M:%S')}] {msg}", flush=True)
-
-
-def star_labels(traj: pd.DataFrame) -> dict[int, str]:
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    out = {}
-    for hip, r in lab.iterrows():
-        name, bayer = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        out[int(hip)] = (name if name and name != "nan"
-                         else bayer if bayer and bayer != "nan"
-                         else f"HIP {int(hip)}")
-    return out
 
 
 def best_per_epoch(rho: np.ndarray, mag: np.ndarray, limit: float):
@@ -153,6 +143,11 @@ def main() -> None:
     p.add_argument("--Tmax", type=float, default=None)
     p.add_argument("--epoch-step", type=float, default=None,
                    help="subsample the file's epochs to this spacing, kyr")
+    p.add_argument("--vmax", type=float, default=4.0,
+                   help="faintest star allowed to hold the office. Past this "
+                        "an eye cannot keep a star apart from its neighbours, "
+                        "so a nearer but fainter one is not a better pole "
+                        "star; the catalogue now reaches well beyond it.")
     p.add_argument("--mag-limits", type=float, nargs="+", default=list(MAG_LIMITS))
     p.add_argument("--reign-mag", type=float, default=2.5,
                    help="magnitude limit used for the succession timeline")
@@ -173,12 +168,16 @@ def main() -> None:
     traj = normalise_epoch(traj).drop_duplicates(["HIP", "epoch"])
     labels = star_labels(traj)
 
-    dec_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    mag_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
-    epochs = dec_w.index.to_numpy(dtype=float)
-    hips = dec_w.columns.to_numpy()
-    dec = dec_w.to_numpy(dtype=float)
-    mag = mag_w.to_numpy(dtype=float)
+    epochs, hips, _arr = pivot_epoch_star(traj, ["dec_deg", "Vmag"])
+    dec, mag = _arr["dec_deg"], _arr["Vmag"]
+
+    # Cut before anything else: every quantity below is a minimum over stars,
+    # and a minimum happily picks a sixth-magnitude star that nobody could
+    # have found, which would silently answer a different question.
+    usable = np.nanmin(mag, axis=0) <= args.vmax
+    hips, dec, mag = hips[usable], dec[:, usable], mag[:, usable]
+    log(f"  {int(usable.sum())} stelle entro V<{args.vmax} "
+        f"su {usable.size} nel catalogo")
 
     keep = np.ones(epochs.size, dtype=bool)
     if args.Tmin is not None:

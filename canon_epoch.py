@@ -67,7 +67,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (normalise_epoch, pivot_epoch_star,
+                        read_star_table, star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -286,16 +287,7 @@ def main() -> None:
     log(f"  {len(traj):,} rows, {traj['HIP'].nunique()} stars")
 
     # One label per star, for naming whichever one binds an interval edge.
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    labels = {}
-    for hip, r in lab.iterrows():
-        name, bayer = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        if name and name != "nan":
-            labels[hip] = name
-        elif bayer and bayer != "nan":
-            labels[hip] = bayer
-        else:
-            labels[hip] = f"HIP {int(hip)}"
+    labels = star_labels(traj)
 
     available = np.sort(traj["epoch"].unique())
     keep = available[(available >= args.Tmin) & (available <= args.Tmax)]
@@ -305,10 +297,9 @@ def main() -> None:
     stride = max(1, int(round(args.epoch_step / base)))
     traj = traj[traj["epoch"].isin(keep[::stride])]
 
-    wide = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    epochs = wide.index.to_numpy(dtype=float)
-    all_hips = wide.columns.to_numpy()
-    dec_all = wide.to_numpy(dtype=float)
+    epochs, all_hips, _arr = pivot_epoch_star(
+        traj, ["dec_deg", "ecl_lat_deg", "Vmag"])
+    dec_all = _arr["dec_deg"]
     log(f"Epochs: {epochs.size} from {epochs.min():+.1f} to {epochs.max():+.1f} kyr")
 
     # Ecliptic latitude is very nearly invariant under precession, so one value
@@ -316,14 +307,12 @@ def main() -> None:
     # the south ecliptic pole, which is where the constellations instituted by
     # Keyser and de Houtman in 1598 and by Lacaille in the 1750s live, and so
     # whether its presence in an ancient canon is a modern contamination.
-    ecl = traj.pivot(index="epoch", columns="HIP",
-                     values="ecl_lat_deg").sort_index().to_numpy(dtype=float)
+    ecl = _arr["ecl_lat_deg"]
 
     # Apparent magnitude of date, not today's: over these spans stars move
     # enough in distance to change brightness appreciably, and the question is
     # what was bright then.
-    mag_all = traj.pivot(index="epoch", columns="HIP",
-                         values="Vmag").sort_index().to_numpy(dtype=float)
+    mag_all = _arr["Vmag"]
 
     present_epoch = float(epochs[np.argmin(np.abs(epochs - args.present_kyr))])
     i_present = int(np.argmin(np.abs(epochs - present_epoch)))

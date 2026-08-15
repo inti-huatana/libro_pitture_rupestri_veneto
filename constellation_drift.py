@@ -70,7 +70,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (normalise_epoch, pivot_epoch_star,
+                        read_star_table, star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -350,16 +351,10 @@ def main() -> None:
             "qui non dipendono dalla latitudine, quindi trajectories.csv "
             "contiene lo stesso e con 27 volte meno righe.")
 
-    ra_w = traj.pivot(index="epoch", columns="HIP", values="ra_deg").sort_index()
-    dec_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    dist_w = traj.pivot(index="epoch", columns="HIP", values="distance_pc").sort_index()
-    mag_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
-    mag = mag_w.to_numpy(dtype=float)
-    epochs = ra_w.index.to_numpy(dtype=float)
-    all_hips = ra_w.columns.to_numpy()
-    ra = ra_w.to_numpy(dtype=float)
-    dec = dec_w.to_numpy(dtype=float)
-    dpc = dist_w.to_numpy(dtype=float)
+    epochs, all_hips, _arr = pivot_epoch_star(
+        traj, ["ra_deg", "dec_deg", "distance_pc", "Vmag"])
+    ra, dec = _arr["ra_deg"], _arr["dec_deg"]
+    dpc, mag = _arr["distance_pc"], _arr["Vmag"]
     log(f"  {all_hips.size} stars, {epochs.size} epochs "
         f"[{epochs.min():+.1f}, {epochs.max():+.1f}] kyr")
 
@@ -368,13 +363,7 @@ def main() -> None:
     log(f"Reference epoch {epochs[i_ref]:+.1f} kyr | "
         f"farthest {epochs[i_far]:+.1f} kyr")
 
-    labels = {}
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    for hip, r in lab.iterrows():
-        name, bayer = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        labels[hip] = (name if name and name != "nan"
-                       else bayer if bayer and bayer != "nan"
-                       else f"HIP {int(hip)}")
+    labels = star_labels(traj)
 
     members = pd.read_csv(Path(args.skycultures) / "members.csv")
     cons = pd.read_csv(Path(args.skycultures) / "constellations.csv")

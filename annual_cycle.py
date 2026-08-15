@@ -47,7 +47,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (normalise_epoch, pivot_epoch_star,
+                        read_star_table, star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -135,23 +136,12 @@ def main() -> None:
     df = df.drop_duplicates(["HIP", "epoch"])
     df = df[df["Vmag"] <= args.vmax]
 
-    lab = df.groupby("HIP")[["NAME", "Bayer"]].first()
-    labels = {}
-    for hip, r in lab.iterrows():
-        nm, by = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        labels[int(hip)] = (nm if nm and nm != "nan"
-                            else by if by and by != "nan" else f"HIP {int(hip)}")
-
-    vis = df.pivot(index="epoch", columns="HIP", values="visibility").sort_index()
-    rise = df.pivot(index="epoch", columns="HIP",
-                    values="heliacal_rising_day").sort_index()
-    setd = df.pivot(index="epoch", columns="HIP",
-                    values="heliacal_setting_day").sort_index()
-    epochs = vis.index.to_numpy(dtype=float)
-    hips = vis.columns.to_numpy()
-    V = vis.to_numpy(dtype=object)
-    R = rise.to_numpy(dtype=float)
-    S = setd.to_numpy(dtype=float)
+    labels = star_labels(df)
+    epochs, hips, arr = pivot_epoch_star(
+        df, ["visibility", "heliacal_rising_day", "heliacal_setting_day"])
+    V = arr["visibility"]
+    R = arr["heliacal_rising_day"]
+    S = arr["heliacal_setting_day"]
     log(f"  {hips.size} stelle V<{args.vmax}, {epochs.size} epoche "
         f"[{epochs.min():+.1f}, {epochs.max():+.1f}] kyr, lat {lat_used:+.1f}°")
 

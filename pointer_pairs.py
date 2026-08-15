@@ -69,7 +69,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (normalise_epoch, pivot_epoch_star,
+                        read_star_table, star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -265,19 +266,10 @@ def main() -> None:
                             "Vmag", "NAME", "Bayer"])
     traj = normalise_epoch(traj).drop_duplicates(["HIP", "epoch"])
 
-    lab = traj.groupby("HIP")[["NAME", "Bayer"]].first()
-    labels = {}
-    for hip, r in lab.iterrows():
-        nm, by = str(r["NAME"]).strip(), str(r["Bayer"]).strip()
-        labels[int(hip)] = (nm if nm and nm != "nan"
-                            else by if by and by != "nan" else f"HIP {int(hip)}")
-
-    ra_w = traj.pivot(index="epoch", columns="HIP", values="ra_deg").sort_index()
-    de_w = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    mg_w = traj.pivot(index="epoch", columns="HIP", values="Vmag").sort_index()
-    epochs_all = ra_w.index.to_numpy(dtype=float)
-    hips = ra_w.columns.to_numpy()
-    RA, DE, MG = ra_w.to_numpy(float), de_w.to_numpy(float), mg_w.to_numpy(float)
+    labels = star_labels(traj)
+    epochs_all, hips, _arr = pivot_epoch_star(
+        traj, ["ra_deg", "dec_deg", "Vmag"])
+    RA, DE, MG = _arr["ra_deg"], _arr["dec_deg"], _arr["Vmag"]
 
     stride = 1
     if epochs_all.size > 1:

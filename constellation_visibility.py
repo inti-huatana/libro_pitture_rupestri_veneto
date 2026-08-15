@@ -52,7 +52,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from star_table import read_star_table, normalise_epoch
+from star_table import (normalise_epoch, pivot_epoch_star,
+                        read_star_table, star_labels)
 
 import matplotlib
 matplotlib.use("Agg")
@@ -209,10 +210,8 @@ def main() -> None:
     stride = max(1, int(round(args.epoch_step / base)))
     traj = traj[traj["epoch"].isin(keep[::stride])]
 
-    wide = traj.pivot(index="epoch", columns="HIP", values="dec_deg").sort_index()
-    epochs = wide.index.to_numpy(dtype=float)
-    all_hips = wide.columns.to_numpy()
-    dec_all = wide.to_numpy(dtype=float)
+    epochs, all_hips, _arr = pivot_epoch_star(traj, ["dec_deg"])
+    dec_all = _arr["dec_deg"]
 
     lat_grid = np.arange(args.lat_min, args.lat_max + 1e-9, args.lat_step)
     log(f"Epochs: {epochs.size} from {epochs.min():+.1f} to {epochs.max():+.1f} kyr")
